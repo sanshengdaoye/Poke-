@@ -28,14 +28,26 @@ class TransactionRepository @Inject constructor(
 
     suspend fun getTotalExpense(bookId: String): Long = transactionDao.getTotalExpense(bookId) ?: 0L
 
-    suspend fun getTotalIncomeByDateRange(bookId: String, start: Long, end: Long): Long =
-        transactionDao.getTotalIncomeByDateRange(bookId, start, end) ?: 0L
+    suspend fun getTransactionsByBookAndDateRange(bookId: String, start: Long, end: Long): List<Transaction> =
+        transactionDao.getByBookAndDateRange(bookId, start, end)
 
-    suspend fun getTotalExpenseByDateRange(bookId: String, start: Long, end: Long): Long =
-        transactionDao.getTotalExpenseByDateRange(bookId, start, end) ?: 0L
+    // --- M3 新增 ---
 
-    suspend fun getExpenseByCategory(bookId: String, categoryId: String): Long =
-        transactionDao.getExpenseByCategory(bookId, categoryId) ?: 0L
+    suspend fun getExpenseByCategory(bookId: String, start: Long, end: Long): List<TransactionDao.CategoryExpense> =
+        transactionDao.getExpenseByCategory(bookId, start, end)
 
-    suspend fun getTransactionCount(bookId: String): Int = transactionDao.getTransactionCount(bookId)
+    suspend fun getMonthlyExpenseTrend(bookId: String, start: Long, limit: Int = 6): List<TransactionDao.MonthlyTotal> =
+        transactionDao.getMonthlyExpenseTrend(bookId, start, limit)
+
+    suspend fun getMonthlyIncomeTrend(bookId: String, start: Long, limit: Int = 6): List<TransactionDao.MonthlyTotal> =
+        transactionDao.getMonthlyIncomeTrend(bookId, start, limit)
+
+    suspend fun getDailyExpenseForCalendar(bookId: String, start: Long, end: Long): List<TransactionDao.DailyTotal> =
+        transactionDao.getDailyExpenseForCalendar(bookId, start, end)
+
+    suspend fun getMaxDailyExpense(bookId: String, start: Long, end: Long): TransactionDao.DailyTotal? =
+        transactionDao.getMaxDailyExpense(bookId, start, end)
+
+    suspend fun getCategoryExpenseInPeriod(bookId: String, categoryId: String, start: Long, end: Long): Long =
+        transactionDao.getCategoryExpenseInPeriod(bookId, categoryId, start, end) ?: 0L
 }

@@ -11,6 +11,13 @@ sealed class BottomNavItem(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
+    object Dashboard : BottomNavItem(
+        route = "dashboard",
+        title = "首页",
+        selectedIcon = Icons.Filled.Home,
+        unselectedIcon = Icons.Outlined.Home
+    )
+
     object Flow : BottomNavItem(
         route = "flow",
         title = "流水",
@@ -32,6 +39,13 @@ sealed class BottomNavItem(
         unselectedIcon = Icons.Outlined.PieChartOutline
     )
 
+    object Budget : BottomNavItem(
+        route = "budget",
+        title = "预算",
+        selectedIcon = Icons.Filled.AccountBalanceWallet,
+        unselectedIcon = Icons.Outlined.AccountBalanceWallet
+    )
+
     object Me : BottomNavItem(
         route = "me",
         title = "我的",
@@ -40,6 +54,6 @@ sealed class BottomNavItem(
     )
 
     companion object {
-        val items = listOf(Flow, Record, Stats, Me)
+        val items = listOf(Dashboard, Flow, Record, Stats, Budget, Me)
     }
 }

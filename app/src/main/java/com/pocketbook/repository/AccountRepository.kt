@@ -22,5 +22,5 @@ class AccountRepository @Inject constructor(
 
     suspend fun deleteAccount(account: Account) = accountDao.delete(account)
 
-    suspend fun adjustBalance(id: String, delta: Double) = accountDao.adjustBalance(id, delta)
+    suspend fun adjustBalance(id: String, delta: Long) = accountDao.adjustBalance(id, delta)
 }

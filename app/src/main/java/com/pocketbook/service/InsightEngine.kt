@@ -2,6 +2,7 @@ package com.pocketbook.service
 
 import com.pocketbook.data.entity.*
 import com.pocketbook.repository.*
+import kotlinx.coroutines.flow.first
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,11 +44,12 @@ class InsightEngine @Inject constructor(
             val lastMonthExpense = getLastMonthCategoryExpense(bookId, categoryId)
             if (lastMonthExpense > 0 && monthlyExpense > lastMonthExpense * 1.5) {
                 val increase = ((monthlyExpense - lastMonthExpense) * 100 / lastMonthExpense).toInt()
+                val categoryName = category?.name ?: "该分类"
                 insights.add(
                     Insight(
                         type = InsightType.ANOMALY,
-                        title = "${category.name}支出比上月增长 ${increase}%",
-                        description = "本月${category.name}比上月多支出了 ¥${(monthlyExpense - lastMonthExpense) / 100}.${String.format("%02d", (monthlyExpense - lastMonthExpense) % 100)}",
+                        title = "$categoryName支出比上月增长 ${increase}%",
+                        description = "本月$categoryName比上月多支出了 ¥${(monthlyExpense - lastMonthExpense) / 100}.${String.format("%02d", (monthlyExpense - lastMonthExpense) % 100)}",
                         severity = InsightSeverity.WARNING,
                         relatedCategoryId = categoryId,
                         relatedAmount = monthlyExpense
@@ -172,10 +174,9 @@ class InsightEngine @Inject constructor(
         val end = cal.timeInMillis
 
         return transactionRepository.getTransactionsByDateRange(bookId, start, end)
-            .firstOrNull()
-            ?.filter { it.type == TransactionType.EXPENSE }
-            ?.sumOf { it.amount }
-            ?: 0L
+            .first()
+            .filter { it.type == TransactionType.EXPENSE }
+            .sumOf { it.amount }
     }
 
     private suspend fun getLastMonthCategoryExpense(bookId: String, categoryId: String): Long {
@@ -194,9 +195,8 @@ class InsightEngine @Inject constructor(
         val end = cal.timeInMillis
 
         return transactionRepository.getTransactionsByDateRange(bookId, start, end)
-            .firstOrNull()
-            ?.filter { it.type == TransactionType.EXPENSE && it.categoryId == categoryId }
-            ?.sumOf { it.amount }
-            ?: 0L
+            .first()
+            .filter { it.type == TransactionType.EXPENSE && it.categoryId == categoryId }
+            .sumOf { it.amount }
     }
 }

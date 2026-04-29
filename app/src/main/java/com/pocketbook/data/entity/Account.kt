@@ -10,15 +10,18 @@ data class Account(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val type: AccountType,
-    val balance: Double = 0.0,
+    val balance: Long = 0, // 单位：分，避免浮点误差
     val icon: String? = null,
     val color: Int? = null,
-    val note: String? = null,
-    val sortOrder: Int = 0,
-    val isArchived: Boolean = false,
+    val isDefault: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
 
 enum class AccountType {
-    CASH, DEBIT_CARD, CREDIT_CARD, ALIPAY, WECHAT_PAY, SAVINGS, INVESTMENT, OTHER
+    CASH,          // 现金
+    DEBIT_CARD,  // 银行卡（借记卡）
+    CREDIT_CARD, // 信用卡
+    ALIPAY,      // 支付宝
+    WECHAT_PAY,  // 微信支付
+    OTHER        // 其他
 }

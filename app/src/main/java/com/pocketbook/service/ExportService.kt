@@ -3,7 +3,6 @@ package com.pocketbook.service
 import android.content.Context
 import android.os.Environment
 import com.pocketbook.data.entity.Transaction
-import com.pocketbook.data.entity.TransactionType
 import com.pocketbook.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,20 +21,17 @@ class ExportService @Inject constructor(
     suspend fun exportToCSV(bookId: String, context: Context): Result<File> = withContext(Dispatchers.IO) {
         try {
             val transactions = transactionRepository.getTransactionsByBook(bookId).firstOrNull() ?: emptyList()
-
             val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val fileName = "jiyi_export_${formatDateForFile(System.currentTimeMillis())}.csv"
             val file = File(downloadsDir, fileName)
 
             FileWriter(file).use { writer ->
-                writer.append("Date,Type,Amount,Category,Account,Note
-")
+                writer.append("Date,Type,Amount,Category,Account,Note\n")
                 transactions.forEach { tx ->
-                    writer.append("${formatDate(tx.date)},${tx.type},${tx.amount / 100.0},${tx.categoryId},${tx.accountId},${tx.note}
-")
+                    val note = tx.note ?: ""
+                    writer.append("${formatDate(tx.date)},${tx.type},${tx.amount / 100.0},${tx.categoryId ?: ""},${tx.accountId ?: ""},$note\n")
                 }
             }
-
             Result.success(file)
         } catch (e: Exception) {
             Result.failure(e)
@@ -45,40 +41,27 @@ class ExportService @Inject constructor(
     suspend fun exportToJSON(bookId: String, context: Context): Result<File> = withContext(Dispatchers.IO) {
         try {
             val transactions = transactionRepository.getTransactionsByBook(bookId).firstOrNull() ?: emptyList()
-
             val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val fileName = "jiyi_export_${formatDateForFile(System.currentTimeMillis())}.json"
             val file = File(downloadsDir, fileName)
 
-            val jsonBuilder = StringBuilder()
-            jsonBuilder.append("[
-")
+            val sb = StringBuilder()
+            sb.append("[\n")
             transactions.forEachIndexed { index, tx ->
-                jsonBuilder.append("  {
-")
-                jsonBuilder.append("    "id": "${tx.id}",
-")
-                jsonBuilder.append("    "date": ${tx.date},
-")
-                jsonBuilder.append("    "type": "${tx.type}",
-")
-                jsonBuilder.append("    "amount": ${tx.amount},
-")
-                jsonBuilder.append("    "categoryId": "${tx.categoryId}",
-")
-                jsonBuilder.append("    "accountId": "${tx.accountId}",
-")
-                jsonBuilder.append("    "note": "${tx.note?.replace(""", "\"")}"
-")
-                jsonBuilder.append("  }")
-                if (index < transactions.size - 1) jsonBuilder.append(",")
-                jsonBuilder.append("
-")
+                sb.append("  {\n")
+                sb.append("    \"id\": \"${tx.id}\",\n")
+                sb.append("    \"date\": ${tx.date},\n")
+                sb.append("    \"type\": \"${tx.type}\",\n")
+                sb.append("    \"amount\": ${tx.amount},\n")
+                sb.append("    \"categoryId\": \"${tx.categoryId ?: ""}\",\n")
+                sb.append("    \"accountId\": \"${tx.accountId ?: ""}\",\n")
+                sb.append("    \"note\": \"${tx.note?.replace("\"", "\\\"") ?: ""}\"\n")
+                sb.append("  }")
+                if (index < transactions.size - 1) sb.append(",")
+                sb.append("\n")
             }
-            jsonBuilder.append("]
-")
-
-            file.writeText(jsonBuilder.toString())
+            sb.append("]\n")
+            file.writeText(sb.toString())
             Result.success(file)
         } catch (e: Exception) {
             Result.failure(e)

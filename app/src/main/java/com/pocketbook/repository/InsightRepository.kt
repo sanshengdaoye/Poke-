@@ -2,6 +2,7 @@ package com.pocketbook.repository
 
 import com.pocketbook.data.dao.InsightDao
 import com.pocketbook.data.entity.Insight
+import com.pocketbook.data.entity.InsightType
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -10,23 +11,30 @@ import javax.inject.Singleton
 class InsightRepository @Inject constructor(
     private val insightDao: InsightDao
 ) {
-    fun getActiveInsights(): Flow<List<Insight>> = insightDao.getActiveInsights()
+    fun getInsightsByBook(bookId: String): Flow<List<Insight>> =
+        insightDao.getByBook(bookId)
 
-    fun getUnreadInsights(): Flow<List<Insight>> = insightDao.getUnreadInsights()
+    fun getUnreadInsights(bookId: String): Flow<List<Insight>> =
+        insightDao.getUnreadByBook(bookId)
 
-    suspend fun getUnreadCount(): Int = insightDao.getUnreadCount()
+    suspend fun getLatestByType(bookId: String, type: InsightType): Insight? =
+        insightDao.getLatestByType(bookId, type)
 
-    fun getInsightsByType(type: String): Flow<List<Insight>> = insightDao.getByType(type)
+    suspend fun createInsight(insight: Insight) = insightDao.insert(insight)
 
-    suspend fun saveInsight(insight: Insight) = insightDao.insert(insight)
-
-    suspend fun saveInsights(insights: List<Insight>) = insightDao.insertAll(insights)
+    suspend fun createInsights(insights: List<Insight>) = insightDao.insertAll(insights)
 
     suspend fun markAsRead(id: String) = insightDao.markAsRead(id)
 
-    suspend fun dismiss(id: String) = insightDao.dismiss(id)
+    suspend fun deleteInsight(insight: Insight) = insightDao.delete(insight)
 
-    suspend fun deleteOldInsights(beforeTime: Long) = insightDao.deleteOldInsights(beforeTime)
+    suspend fun deleteByBook(bookId: String) = insightDao.deleteByBook(bookId)
 
-    suspend fun deleteAll() = insightDao.deleteAll()
+    // --- M3 新增 ---
+
+    suspend fun deleteByType(bookId: String, type: InsightType) =
+        insightDao.deleteByType(bookId, type)
+
+    suspend fun getTopUnread(bookId: String): List<Insight> =
+        insightDao.getTopUnread(bookId)
 }

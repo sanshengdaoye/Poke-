@@ -27,28 +27,45 @@ fun PocketBookNavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = BottomNavItem.Flow.route,
+            startDestination = BottomNavItem.Dashboard.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(BottomNavItem.Flow.route) { 
-                FlowScreen(
-                    onAddClick = {
+            composable(BottomNavItem.Dashboard.route) { 
+                DashboardScreen(
+                    onNavigateToRecord = {
                         navController.navigate(BottomNavItem.Record.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToTransactions = {
+                        navController.navigate(BottomNavItem.Flow.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToStats = {
+                        navController.navigate(BottomNavItem.Stats.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToBudget = {
+                        navController.navigate(BottomNavItem.Budget.route) {
                             launchSingleTop = true
                         }
                     }
                 ) 
             }
+            composable(BottomNavItem.Flow.route) { FlowScreen() }
             composable(BottomNavItem.Record.route) { 
                 RecordScreen(
                     onSaveComplete = {
-                        navController.navigate(BottomNavItem.Flow.route) {
-                            popUpTo(BottomNavItem.Flow.route) { inclusive = true }
+                        navController.navigate(BottomNavItem.Dashboard.route) {
+                            popUpTo(BottomNavItem.Dashboard.route) { inclusive = true }
                         }
                     }
                 ) 
             }
             composable(BottomNavItem.Stats.route) { StatsScreen() }
+            composable(BottomNavItem.Budget.route) { BudgetScreen() }
             composable(BottomNavItem.Me.route) { MeScreen() }
         }
     }

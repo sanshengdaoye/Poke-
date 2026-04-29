@@ -32,7 +32,7 @@ data class Budget(
     val id: String = UUID.randomUUID().toString(),
     val bookId: String,
     val name: String,
-    val amount: Double,
+    val amount: Long, // 单位：分，避免浮点误差
     val categoryId: String? = null,
     val period: BudgetPeriod = BudgetPeriod.MONTHLY,
     val startDate: Long = System.currentTimeMillis(),

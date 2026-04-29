@@ -43,6 +43,7 @@ data class Transaction(
     val amount: Long,
     val categoryId: String? = null,
     val accountId: String? = null,
+    val tags: String? = null, // comma-separated tag IDs
     val date: Long = System.currentTimeMillis(),
     val note: String? = null,
     val createdAt: Long = System.currentTimeMillis(),

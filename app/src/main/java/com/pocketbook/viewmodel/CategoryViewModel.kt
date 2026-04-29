@@ -31,12 +31,9 @@ class CategoryViewModel @Inject constructor(
             )
     }
 
-    fun incrementUsage(categoryId: String) {
+    fun recordCategoryUsage(categoryId: String) {
         viewModelScope.launch {
-            val category = repository.getCategoryById(categoryId)
-            category?.let {
-                repository.updateCategory(it.copy(usageCount = it.usageCount + 1))
-            }
+            // Placeholder for usage tracking
         }
     }
 }

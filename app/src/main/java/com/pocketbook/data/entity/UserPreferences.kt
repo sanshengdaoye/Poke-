@@ -6,13 +6,15 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "user_preferences")
 data class UserPreferences(
     @PrimaryKey
-    val id: Int = 1,
-    val theme: ThemeMode = ThemeMode.SYSTEM,
-    val currency: String = "CNY",
+    val id: Int = 1, // 单例表，只有一条记录
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val defaultBookId: String? = null,
-    val reminderTime: String? = "21:00",
-    val insightEnabled: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val dailyReminderHour: Int = 21,
+    val dailyReminderMinute: Int = 0,
+    val reminderEnabled: Boolean = true,
+    val currency: String = "CNY",
+    val firstDayOfWeek: Int = 1, // 1=周一
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 enum class ThemeMode {

@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -77,7 +78,7 @@ fun BudgetScreen(
                 items(budgets) { budget ->
                     BudgetItem(
                         budget = budget,
-                        spent = viewModel.getSpentAmount(budget),
+                        spent = viewModel.getSpentAmountValue(budget),
                         onDelete = { viewModel.deleteBudget(budget) }
                     )
                 }
@@ -180,7 +181,7 @@ fun AddBudgetDialog(
     onConfirm: (Long, BudgetPeriod) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
-    var selectedPeriod by remember { mutableStateOf(BudgetPeriod.MONTH) }
+    var selectedPeriod by remember { mutableStateOf(BudgetPeriod.MONTHLY) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -203,16 +204,16 @@ fun AddBudgetDialog(
                     modifier = Modifier.padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    BudgetPeriod.values().forEach { period ->
+                    BudgetPeriod.entries.forEach { period ->
                         FilterChip(
                             selected = selectedPeriod == period,
                             onClick = { selectedPeriod = period },
                             label = {
                                 Text(
                                     when (period) {
-                                        BudgetPeriod.WEEK -> "周"
-                                        BudgetPeriod.MONTH -> "月"
-                                        BudgetPeriod.YEAR -> "年"
+                                        BudgetPeriod.WEEKLY -> "周"
+                                        BudgetPeriod.MONTHLY -> "月"
+                                        BudgetPeriod.YEARLY -> "年"
                                         else -> "自定义"
                                     }
                                 )

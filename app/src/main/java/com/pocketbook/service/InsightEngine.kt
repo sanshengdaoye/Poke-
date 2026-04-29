@@ -48,7 +48,7 @@ class InsightEngine @Inject constructor(
                 insights.add(
                     Insight(
                         type = InsightType.ANOMALY,
-                        title = "$categoryName支出比上月增长 ${increase}%",
+                        title = "${categoryName}支出比上月增长 ${increase}%",
                         description = "本月$categoryName比上月多支出了 ¥${(monthlyExpense - lastMonthExpense) / 100}.${String.format("%02d", (monthlyExpense - lastMonthExpense) % 100)}",
                         severity = InsightSeverity.WARNING,
                         relatedCategoryId = categoryId,

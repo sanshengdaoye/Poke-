@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TagDao {
-    @Query("SELECT * FROM tags ORDER BY sortOrder ASC, createdAt DESC")
+    @Query("SELECT * FROM tags ORDER BY createdAt DESC")
     fun getAll(): Flow<List<Tag>>
 
     @Query("SELECT * FROM tags WHERE id = :id")
@@ -15,12 +15,12 @@ interface TagDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(tag: Tag)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(tags: List<Tag>)
-
     @Update
     suspend fun update(tag: Tag)
 
     @Delete
     suspend fun delete(tag: Tag)
+
+    @Query("SELECT * FROM tags WHERE name LIKE '%' || :query || '%' ORDER BY name ASC")
+    suspend fun search(query: String): List<Tag>
 }

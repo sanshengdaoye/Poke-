@@ -28,6 +28,12 @@ class TransactionRepository @Inject constructor(
 
     suspend fun getTotalExpense(bookId: String): Long = transactionDao.getTotalExpense(bookId) ?: 0L
 
+    suspend fun getTotalIncomeByDateRange(bookId: String, start: Long, end: Long): Long =
+        transactionDao.getTotalIncomeByDateRange(bookId, start, end) ?: 0L
+
+    suspend fun getTotalExpenseByDateRange(bookId: String, start: Long, end: Long): Long =
+        transactionDao.getTotalExpenseByDateRange(bookId, start, end) ?: 0L
+
     suspend fun getExpenseByCategory(bookId: String, categoryId: String): Long =
         transactionDao.getExpenseByCategory(bookId, categoryId) ?: 0L
 

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PocketBook" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Material 3 theming handled by Compose -->
+    </style>
+</resources>

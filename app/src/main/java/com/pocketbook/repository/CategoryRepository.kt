@@ -11,9 +11,10 @@ import javax.inject.Singleton
 class CategoryRepository @Inject constructor(
     private val categoryDao: CategoryDao
 ) {
-    fun getAllCategories(): Flow<List<Category>> = categoryDao.getAll()
+    fun getCategoriesByType(type: CategoryType): Flow<List<Category>> =
+        categoryDao.getByType(type)
 
-    fun getCategoriesByType(type: CategoryType): Flow<List<Category>> = categoryDao.getByType(type)
+    fun getAllCategories(): Flow<List<Category>> = categoryDao.getAll()
 
     suspend fun getCategoryById(id: String): Category? = categoryDao.getById(id)
 
@@ -22,6 +23,4 @@ class CategoryRepository @Inject constructor(
     suspend fun updateCategory(category: Category) = categoryDao.update(category)
 
     suspend fun deleteCategory(category: Category) = categoryDao.delete(category)
-
-    suspend fun getPresetCount(): Int = categoryDao.getPresetCount()
 }

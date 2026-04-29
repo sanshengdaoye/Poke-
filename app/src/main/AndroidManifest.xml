@@ -9,7 +9,7 @@
 
     <application
         android:name="com.pocketbook.PocketBookApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:label="@string/app_name"
         android:theme="@style/Theme.PocketBook"
         android:supportsRtl="true"
@@ -20,7 +20,7 @@
             android:theme="@style/Theme.PocketBook">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>

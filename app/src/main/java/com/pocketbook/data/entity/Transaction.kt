@@ -40,10 +40,11 @@ data class Transaction(
     val id: String = UUID.randomUUID().toString(),
     val bookId: String,
     val type: TransactionType,
-    val amount: Long,
+    val amount: Long, // 单位：分，避免浮点误差
     val categoryId: String? = null,
     val accountId: String? = null,
-    val tags: String? = null, // comma-separated tag IDs
+    val tagIds: String? = null, // JSON 存储 List<String>，如 ["tag1","tag2"]
+    val isRecurring: Boolean = false,
     val date: Long = System.currentTimeMillis(),
     val note: String? = null,
     val createdAt: Long = System.currentTimeMillis(),

@@ -18,9 +18,6 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: Transaction)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(transactions: List<Transaction>)
-
     @Update
     suspend fun update(transaction: Transaction)
 
@@ -33,15 +30,75 @@ interface TransactionDao {
     @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND type = 'EXPENSE'")
     suspend fun getTotalExpense(bookId: String): Long?
 
-    @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND categoryId = :categoryId AND type = 'EXPENSE'")
-    suspend fun getExpenseByCategory(bookId: String, categoryId: String): Long?
+    // --- M3 新增 ---
 
-    @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND type = 'INCOME' AND date BETWEEN :start AND :end")
-    suspend fun getTotalIncomeByDateRange(bookId: String, start: Long, end: Long): Long?
+    @Query("""
+        SELECT SUM(amount) as total, categoryId 
+        FROM transactions 
+        WHERE bookId = :bookId AND type = 'EXPENSE' AND date BETWEEN :start AND :end 
+        GROUP BY categoryId
+        ORDER BY total DESC
+    """)
+    suspend fun getExpenseByCategory(bookId: String, start: Long, end: Long): List<CategoryExpense>
 
-    @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND type = 'EXPENSE' AND date BETWEEN :start AND :end")
-    suspend fun getTotalExpenseByDateRange(bookId: String, start: Long, end: Long): Long?
+    @Query("""
+        SELECT SUM(amount) as total, strftime('%Y-%m', date/1000, 'unixepoch') as month
+        FROM transactions
+        WHERE bookId = :bookId AND type = 'EXPENSE' AND date >= :start
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT :limit
+    """)
+    suspend fun getMonthlyExpenseTrend(bookId: String, start: Long, limit: Int): List<MonthlyTotal>
 
-    @Query("SELECT COUNT(*) FROM transactions WHERE bookId = :bookId")
-    suspend fun getTransactionCount(bookId: String): Int
+    @Query("""
+        SELECT SUM(amount) as total, strftime('%Y-%m', date/1000, 'unixepoch') as month
+        FROM transactions
+        WHERE bookId = :bookId AND type = 'INCOME' AND date >= :start
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT :limit
+    """)
+    suspend fun getMonthlyIncomeTrend(bookId: String, start: Long, limit: Int): List<MonthlyTotal>
+
+    @Query("""
+        SELECT SUM(amount) as total, strftime('%Y-%m-%d', date/1000, 'unixepoch') as day
+        FROM transactions
+        WHERE bookId = :bookId AND type = 'EXPENSE' AND date BETWEEN :start AND :end
+        GROUP BY day
+        ORDER BY day
+    """)
+    suspend fun getDailyExpenseForCalendar(bookId: String, start: Long, end: Long): List<DailyTotal>
+
+    @Query("""
+        SELECT SUM(amount) as total, strftime('%Y-%m-%d', date/1000, 'unixepoch') as day
+        FROM transactions
+        WHERE bookId = :bookId AND type = 'EXPENSE' AND date BETWEEN :start AND :end
+        GROUP BY day
+        ORDER BY total DESC
+        LIMIT 1
+    """)
+    suspend fun getMaxDailyExpense(bookId: String, start: Long, end: Long): DailyTotal?
+
+    @Query("""
+        SELECT SUM(amount) as total FROM transactions
+        WHERE bookId = :bookId AND type = 'EXPENSE' AND categoryId = :categoryId
+        AND date BETWEEN :start AND :end
+    """)
+    suspend fun getCategoryExpenseInPeriod(bookId: String, categoryId: String, start: Long, end: Long): Long?
+
+    data class CategoryExpense(
+        val total: Long,
+        val categoryId: String?
+    )
+
+    data class MonthlyTotal(
+        val total: Long,
+        val month: String
+    )
+
+    data class DailyTotal(
+        val total: Long,
+        val day: String
+    )
 }

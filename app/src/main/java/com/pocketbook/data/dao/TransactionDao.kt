@@ -36,6 +36,12 @@ interface TransactionDao {
     @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND categoryId = :categoryId AND type = 'EXPENSE'")
     suspend fun getExpenseByCategory(bookId: String, categoryId: String): Long?
 
+    @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND type = 'INCOME' AND date BETWEEN :start AND :end")
+    suspend fun getTotalIncomeByDateRange(bookId: String, start: Long, end: Long): Long?
+
+    @Query("SELECT SUM(amount) FROM transactions WHERE bookId = :bookId AND type = 'EXPENSE' AND date BETWEEN :start AND :end")
+    suspend fun getTotalExpenseByDateRange(bookId: String, start: Long, end: Long): Long?
+
     @Query("SELECT COUNT(*) FROM transactions WHERE bookId = :bookId")
     suspend fun getTransactionCount(bookId: String): Int
 }

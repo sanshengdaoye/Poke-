@@ -10,6 +10,5 @@ data class Tag(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val color: Int? = null,
-    val sortOrder: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -5,6 +5,7 @@ import android.os.Environment
 import com.pocketbook.data.entity.Transaction
 import com.pocketbook.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileWriter

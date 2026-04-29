@@ -21,7 +21,8 @@ import net.sqlcipher.database.SupportFactory
         Account::class,
         Budget::class,
         Insight::class,
-        UserPreferences::class
+        UserPreferences::class,
+        Tag::class
     ],
     version = 1,
     exportSchema = false
@@ -34,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun insightDao(): InsightDao
     abstract fun userPreferencesDao(): UserPreferencesDao
+    abstract fun tagDao(): TagDao
 
     companion object {
         @Volatile

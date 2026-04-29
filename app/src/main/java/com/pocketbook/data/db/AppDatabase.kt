@@ -55,6 +55,8 @@ abstract class AppDatabase : RoomDatabase() {
                         icon TEXT,
                         color INTEGER,
                         isDefault INTEGER NOT NULL DEFAULT 0,
+                        isArchived INTEGER NOT NULL DEFAULT 0,
+                        sortOrder INTEGER NOT NULL DEFAULT 0,
                         createdAt INTEGER NOT NULL
                     )
                     """.trimIndent()
@@ -109,11 +111,14 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context): AppDatabase {
+            val passphrase = net.sqlcipher.database.SQLiteDatabase.getBytes("jiyi_secure_key_2024".toCharArray())
+            val factory = SupportFactory(passphrase)
             return Room.databaseBuilder(
                 context,
                 AppDatabase::class.java,
                 "pocketbook_encrypted.db"
             )
+                .openHelperFactory(factory)
                 .addMigrations(MIGRATION_1_2)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pocketbook.data.entity.Budget
 import com.pocketbook.data.entity.BudgetPeriod
-import com.pocketbook.data.entity.BudgetType
 import com.pocketbook.di.DefaultBookProvider
 import com.pocketbook.repository.BudgetRepository
 import com.pocketbook.repository.TransactionRepository
@@ -56,8 +55,8 @@ class BudgetViewModel @Inject constructor(
 
             val budget = Budget(
                 bookId = bookId,
-                type = BudgetType.TOTAL,
-                amount = amount,
+                name = "预算",
+                amount = amount / 100.0,
                 period = period,
                 startDate = startDate,
                 endDate = endDate

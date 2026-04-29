@@ -2,201 +2,255 @@ package com.pocketbook.service
 
 import com.pocketbook.data.entity.*
 import com.pocketbook.repository.*
-import kotlinx.coroutines.flow.first
-import java.util.Calendar
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 @Singleton
 class InsightEngine @Inject constructor(
     private val transactionRepository: TransactionRepository,
+    private val budgetRepository: BudgetRepository,
     private val insightRepository: InsightRepository,
-    private val categoryRepository: CategoryRepository
+    private val accountRepository: AccountRepository
 ) {
+
     /**
-     * Generate insights after a transaction is recorded.
+     * 生成消费健康评分（0-100）
+     * 基于：预算执行率、消费波动性、储蓄率
      */
-    suspend fun generateInsights(bookId: String, newTransaction: Transaction): List<Insight> {
-        val insights = mutableListOf<Insight>()
+    suspend fun generateHealthScore(bookId: String): Int {
+        val calendar = Calendar.getInstance()
+        val monthStart = calendar.apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
-        // 1. Monthly category spending check
-        val categoryId = newTransaction.categoryId
-        if (categoryId != null) {
-            val monthlyExpense = transactionRepository.getExpenseByCategory(bookId, categoryId)
-            val category = categoryRepository.getCategoryById(categoryId)
+        val monthEnd = calendar.apply {
+            set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+        }.timeInMillis
 
-            // Category anomaly: if this category spent more than ¥1000
-            if (monthlyExpense > 100000 && category != null) {
-                insights.add(
-                    Insight(
-                        type = InsightType.ANOMALY,
-                        title = "本月${category.name}支出偏高",
-                        description = "本月${category.name}已支出 ¥${monthlyExpense / 100}.${String.format("%02d", monthlyExpense % 100)}，建议检查是否有非心要开支",
-                        severity = InsightSeverity.WARNING,
-                        relatedCategoryId = categoryId,
-                        relatedAmount = monthlyExpense
-                    )
-                )
+        val totalIncome = transactionRepository.getTotalIncome(bookId) ?: 0L
+        val totalExpense = transactionRepository.getTotalExpense(bookId) ?: 0L
+
+        // 1. 储蓄率得分 (0-40)
+        val savingRate = if (totalIncome > 0) {
+            (totalIncome - totalExpense).toDouble() / totalIncome.toDouble()
+        } else 0.0
+        val savingScore = when {
+            savingRate >= 0.3 -> 40
+            savingRate >= 0.2 -> 32
+            savingRate >= 0.1 -> 24
+            savingRate >= 0.0 -> 16
+            else -> 0
+        }
+
+        // 2. 预算执行率得分 (0-35)
+        val budgets = budgetRepository.getBudgetsByBook(bookId)
+        var budgetScore = 35
+        if (budgets.isNotEmpty()) {
+            var totalBudgetUsed = 0.0
+            var totalBudgetAmount = 0.0
+            budgets.forEach { budget ->
+                val used = transactionRepository.getCategoryExpenseInPeriod(
+                    bookId, budget.categoryId ?: "", monthStart, monthEnd
+                ) ?: 0L
+                totalBudgetUsed += used
+                totalBudgetAmount += budget.amount
             }
-
-            // Spending trend: compare with previous month
-            val lastMonthExpense = getLastMonthCategoryExpense(bookId, categoryId)
-            if (lastMonthExpense > 0 && monthlyExpense > lastMonthExpense * 1.5) {
-                val increase = ((monthlyExpense - lastMonthExpense) * 100 / lastMonthExpense).toInt()
-                val categoryName = category?.name ?: "该分类"
-                insights.add(
-                    Insight(
-                        type = InsightType.ANOMALY,
-                        title = "${categoryName}支出比上月增长 ${increase}%",
-                        description = "本月${categoryName}比上月多支出了 ¥${(monthlyExpense - lastMonthExpense) / 100}.${String.format("%02d", (monthlyExpense - lastMonthExpense) % 100)}",
-                        severity = InsightSeverity.WARNING,
-                        relatedCategoryId = categoryId,
-                        relatedAmount = monthlyExpense
-                    )
-                )
+            val budgetUsage = if (totalBudgetAmount > 0) totalBudgetUsed / totalBudgetAmount else 0.0
+            budgetScore = when {
+                budgetUsage <= 0.7 -> 35
+                budgetUsage <= 0.9 -> 28
+                budgetUsage <= 1.0 -> 21
+                budgetUsage <= 1.2 -> 14
+                else -> 7
             }
         }
 
-        // 2. Daily anomaly check
-        val todayExpense = getTodayExpense(bookId)
-        if (todayExpense > 50000) { // > ¥500
-            insights.add(
-                Insight(
-                    type = InsightType.ANOMALY,
-                    title = "今日支出较多",
-                    description = "今日已支出 ¥${todayExpense / 100}.${String.format("%02d", todayExpense % 100)}，超过平日水平",
-                    severity = InsightSeverity.WARNING,
-                    relatedAmount = todayExpense
-                )
-            )
-        }
-
-        // 3. Monthly budget/income comparison
-        val totalExpense = transactionRepository.getTotalExpense(bookId)
-        val totalIncome = transactionRepository.getTotalIncome(bookId)
-
-        if (totalIncome > 0) {
-            val spendRatio = (totalExpense * 100 / totalIncome).toInt()
+        // 3. 消费波动性得分 (0-25)
+        val dailyExpenses = transactionRepository.getDailyExpenseForCalendar(bookId, monthStart, monthEnd)
+        val volatilityScore = if (dailyExpenses.size >= 7) {
+            val amounts = dailyExpenses.map { it.total }
+            val avg = amounts.average()
+            val variance = amounts.map { (it - avg) * (it - avg) }.average()
+            val stdDev = kotlin.math.sqrt(variance)
+            val cv = if (avg > 0) stdDev / avg else 0.0
             when {
-                spendRatio > 100 -> {
-                    insights.add(
-                        Insight(
-                            type = InsightType.FORECAST,
-                            title = "本月已超支",
-                            description = "支出已超过收入 ¥${(totalExpense - totalIncome) / 100}.${String.format("%02d", (totalExpense - totalIncome) % 100)}，建议控制开支",
-                            severity = InsightSeverity.CRITICAL,
-                            relatedAmount = totalExpense
-                        )
-                    )
-                }
-                spendRatio > 80 -> {
-                    insights.add(
-                        Insight(
-                            type = InsightType.FORECAST,
-                            title = "本月支出达收入 ${spendRatio}%",
-                            description = "剩余可用 ¥${(totalIncome - totalExpense) / 100}.${String.format("%02d", (totalIncome - totalExpense) % 100)}，建议控制开支",
-                            severity = InsightSeverity.WARNING,
-                            relatedAmount = totalExpense
-                        )
-                    )
-                }
+                cv < 0.5 -> 25
+                cv < 1.0 -> 20
+                cv < 1.5 -> 15
+                cv < 2.0 -> 10
+                else -> 5
             }
-        }
+        } else 20 // 数据不足，给中等分
 
-        // 4. Saving recommendation (simple version for MVP)
-        if (totalIncome > totalExpense) {
-            val savings = totalIncome - totalExpense
-            insights.add(
-                Insight(
-                    type = InsightType.RECOMMENDATION,
-                    title = "本月可存 ¥${savings / 100}.${String.format("%02d", savings % 100)}",
-                    description = "当前结余率 ${((savings * 100 / totalIncome))}%，继续保持！",
-                    severity = InsightSeverity.INFO,
-                    relatedAmount = savings
-                )
-            )
-        }
-
-        // Save insights
-        insights.forEach { insightRepository.saveInsight(it) }
-
-        return insights
+        return min(100, savingScore + budgetScore + volatilityScore)
     }
 
     /**
-     * Generate monthly health score report
+     * 检测冲动消费
+     * 触发条件：深夜大额(22-06点, >500元)、连续大额(3天内2笔>均值200%)、与历史均值偏差>200%
      */
-    suspend fun generateHealthScore(bookId: String): Insight? {
-        val cal = Calendar.getInstance()
-        val currentMonth = cal.get(Calendar.MONTH)
+    suspend fun detectImpulseSpending(bookId: String, transaction: Transaction): Insight? {
+        val amount = transaction.amount
+        val hour = Calendar.getInstance().apply { timeInMillis = transaction.date }.get(Calendar.HOUR_OF_DAY)
+        val now = System.currentTimeMillis()
+        val threeDaysAgo = now - 3 * 86400000L
 
-        val totalIncome = transactionRepository.getTotalIncome(bookId)
-        val totalExpense = transactionRepository.getTotalExpense(bookId)
-        val txCount = transactionRepository.getTransactionCount(bookId)
+        // 条件1：深夜大额消费 (22:00 - 06:00，单笔 > 50000分=500元)
+        val isLateNight = hour >= 22 || hour < 6
+        val isLargeAmount = amount > 50000
 
-        // Simple scoring (MVP version)
-        val budgetScore = if (totalIncome > 0) {
-            (totalExpense * 100 / totalIncome).coerceAtMost(100)
-        } else 100
+        // 条件2：连续大额消费（近3天内已有另一笔大额支出）
+        val recentTransactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, threeDaysAgo, now)
+        val largeCount = recentTransactions.count { it.amount > amount * 0.5 && it.id != transaction.id }
+        val isConsecutiveLarge = largeCount >= 1
 
-        val activityScore = (txCount * 100 / 30).coerceAtMost(100)
-        val savingsRate = if (totalIncome > 0) {
-            ((totalIncome - totalExpense) * 100 / totalIncome).coerceAtLeast(0)
-        } else 0
+        // 条件3：与历史均值偏差 > 200%
+        val categoryExpenses = transactionRepository.getExpenseByCategory(bookId, now - 90 * 86400000L, now)
+        val avgCategoryExpense = if (categoryExpenses.isNotEmpty()) {
+            categoryExpenses.map { it.total }.average()
+        } else 0.0
+        val isAnomaly = avgCategoryExpense > 0 && amount > avgCategoryExpense * 2.0
 
-        val totalScore = (budgetScore * 0.4 + activityScore * 0.3 + savingsRate * 0.3).toInt()
-
-        return Insight(
-            type = InsightType.SCORE,
-            title = "${currentMonth + 1}月消费健康评分: $totalScore",
-            description = "预算执行: $budgetScore | 记账额度: $activityScore | 储蓄率: $savingsRate%",
-            severity = when {
-                totalScore >= 80 -> InsightSeverity.INFO
-                totalScore >= 60 -> InsightSeverity.WARNING
-                else -> InsightSeverity.CRITICAL
-            },
-            relatedAmount = totalExpense
-        ).also { insightRepository.saveInsight(it) }
+        return when {
+            isLateNight && isLargeAmount -> Insight(
+                bookId = bookId,
+                type = InsightType.ANOMALY_DETECTION,
+                title = "🌙 深夜大额消费提醒",
+                content = "凌晨${hour}点消费 ¥${formatAmount(amount)}，深夜大额支出容易被忽略，建议确认是否为必要消费。"
+            )
+            isConsecutiveLarge && isLargeAmount -> Insight(
+                bookId = bookId,
+                type = InsightType.ANOMALY_DETECTION,
+                title = "⚡ 连续大额消费预警",
+                content = "近3天内已有大额支出，本次又消费 ¥${formatAmount(amount)}，注意控制消费节奏。"
+            )
+            isAnomaly -> Insight(
+                bookId = bookId,
+                type = InsightType.ANOMALY_DETECTION,
+                title = "📈 异常消费检测",
+                content = "本次消费 ¥${formatAmount(amount)} 远超该类目历史均值，建议确认交易真实性。"
+            )
+            else -> null
+        }
     }
 
-    private suspend fun getTodayExpense(bookId: String): Long {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        val start = cal.timeInMillis
+    /**
+     * 预测预算燃烧率
+     * 基于本月已用天数和已用预算，预测月底是否会超支
+     */
+    suspend fun predictBudgetBurnRate(bookId: String): Insight? {
+        val calendar = Calendar.getInstance()
+        val today = calendar.get(Calendar.DAY_OF_MONTH)
+        val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val monthProgress = today.toDouble() / daysInMonth.toDouble()
 
-        cal.set(Calendar.HOUR_OF_DAY, 23)
-        cal.set(Calendar.MINUTE, 59)
-        cal.set(Calendar.SECOND, 59)
-        val end = cal.timeInMillis
+        val monthStart = calendar.apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
-        return transactionRepository.getTransactionsByDateRange(bookId, start, end)
-            .first()
-            .filter { it.type == TransactionType.EXPENSE }
-            .sumOf { it.amount }
+        val monthEnd = calendar.apply {
+            set(Calendar.DAY_OF_MONTH, daysInMonth)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+        }.timeInMillis
+
+        val totalIncome = transactionRepository.getTotalIncome(bookId) ?: 0L
+        val totalExpense = transactionRepository.getTotalExpense(bookId) ?: 0L
+
+        if (totalIncome <= 0) return null
+
+        val budgets = budgetRepository.getBudgetsByBook(bookId)
+        if (budgets.isEmpty()) {
+            // 无预算设置，基于收入支出比预测
+            val expenseRatio = totalExpense.toDouble() / totalIncome.toDouble()
+            val projectedRatio = if (monthProgress > 0) expenseRatio / monthProgress else 0.0
+
+            return when {
+                projectedRatio > 1.2 -> Insight(
+                    bookId = bookId,
+                    type = InsightType.BUDGET_ALERT,
+                    title = "🔥 支出严重超标预警",
+                    content = "按当前速度，月底支出将达收入的 ${(projectedRatio * 100).toInt()}%，建议立即控制消费。"
+                )
+                projectedRatio > 1.0 -> Insight(
+                    bookId = bookId,
+                    type = InsightType.BUDGET_ALERT,
+                    title = "⚠️ 支出即将超收入",
+                    content = "按当前速度，月底支出将与收入持平。剩余日均可用 ¥${formatAmount(max(0, (totalIncome - totalExpense) / (daysInMonth - today + 1)))}。"
+                )
+                projectedRatio > 0.8 -> Insight(
+                    bookId = bookId,
+                    type = InsightType.BUDGET_ALERT,
+                    title = "💡 支出偏快提醒",
+                    content = "已用 ${(monthProgress * 100).toInt()}% 的时间，支出占收入 ${(expenseRatio * 100).toInt()}%。建议适当节省。"
+                )
+                else -> null
+            }
+        } else {
+            // 有预算设置，基于预算执行率预测
+            var totalBudget = 0L
+            var totalUsed = 0L
+            var overBudgetCategories = mutableListOf<String>()
+
+            budgets.filter { it.isActive }.forEach { budget ->
+                totalBudget += budget.amount
+                val used = transactionRepository.getCategoryExpenseInPeriod(
+                    bookId, budget.categoryId ?: "", monthStart, monthEnd
+                ) ?: 0L
+                totalUsed += used
+                if (used > budget.amount) {
+                    overBudgetCategories.add(budget.name)
+                }
+            }
+
+            val budgetUsage = if (totalBudget > 0) totalUsed.toDouble() / totalBudget.toDouble() else 0.0
+            val projectedUsage = if (monthProgress > 0) budgetUsage / monthProgress else 0.0
+
+            return when {
+                overBudgetCategories.isNotEmpty() -> Insight(
+                    bookId = bookId,
+                    type = InsightType.BUDGET_ALERT,
+                    title = "🚨 预算超支",
+                    content = "${overBudgetCategories.joinToString("、")} 已超预算，本月剩余可用 ¥${formatAmount(max(0, totalBudget - totalUsed))}。"
+                )
+                projectedUsage > 1.0 -> Insight(
+                    bookId = bookId,
+                    type = InsightType.BUDGET_ALERT,
+                    title = "🔥 预算即将耗尽",
+                    content = "按当前速度，月底将超预算 ${((projectedUsage - 1.0) * 100).toInt()}%。建议控制 ${budgets.firstOrNull()?.name ?: "支出"}。"
+                )
+                projectedUsage > 0.85 -> Insight(
+                    bookId = bookId,
+                    type = InsightType.BUDGET_ALERT,
+                    title = "⚠️ 预算消耗偏快",
+                    content = "已用 ${(monthProgress * 100).toInt()}% 时间，预算消耗 ${(budgetUsage * 100).toInt()}%。"
+                )
+                else -> null
+            }
+        }
     }
 
-    private suspend fun getLastMonthCategoryExpense(bookId: String, categoryId: String): Long {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.MONTH, -1)
-        cal.set(Calendar.DAY_OF_MONTH, 1)
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        val start = cal.timeInMillis
+    private fun formatAmount(amount: Long): String {
+        return String.format("%.2f", amount / 100.0)
+    }
 
-        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
-        cal.set(Calendar.HOUR_OF_DAY, 23)
-        cal.set(Calendar.MINUTE, 59)
-        cal.set(Calendar.SECOND, 59)
-        val end = cal.timeInMillis
-
-        return transactionRepository.getTransactionsByDateRange(bookId, start, end)
-            .first()
-            .filter { it.type == TransactionType.EXPENSE && it.categoryId == categoryId }
-            .sumOf { it.amount }
+    private fun formatAmount(amount: Double): String {
+        return String.format("%.2f", amount / 100.0)
     }
 }

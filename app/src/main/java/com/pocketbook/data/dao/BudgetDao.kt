@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BudgetDao {
-    @Query("SELECT * FROM budgets WHERE bookId = :bookId AND isActive = 1 ORDER BY createdAt DESC")
-    fun getByBook(bookId: String): Flow<List<Budget>>
+    @Query("SELECT * FROM budgets WHERE bookId = :bookId AND isActive = 1")
+    fun getActiveByBook(bookId: String): Flow<List<Budget>>
 
     @Query("SELECT * FROM budgets WHERE id = :id")
     suspend fun getById(id: String): Budget?
@@ -20,4 +20,12 @@ interface BudgetDao {
 
     @Delete
     suspend fun delete(budget: Budget)
+
+    // --- M3 新增 ---
+
+    @Query("SELECT * FROM budgets WHERE bookId = :bookId AND isActive = 1")
+    suspend fun getByBook(bookId: String): List<Budget>
+
+    @Query("SELECT * FROM budgets WHERE bookId = :bookId AND categoryId = :categoryId AND isActive = 1 LIMIT 1")
+    suspend fun getByCategory(bookId: String, categoryId: String): Budget?
 }

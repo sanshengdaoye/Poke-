@@ -30,7 +30,15 @@ fun PocketBookNavGraph(
             startDestination = BottomNavItem.Flow.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(BottomNavItem.Flow.route) { FlowScreen() }
+            composable(BottomNavItem.Flow.route) { 
+                FlowScreen(
+                    onAddClick = {
+                        navController.navigate(BottomNavItem.Record.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                ) 
+            }
             composable(BottomNavItem.Record.route) { 
                 RecordScreen(
                     onSaveComplete = {

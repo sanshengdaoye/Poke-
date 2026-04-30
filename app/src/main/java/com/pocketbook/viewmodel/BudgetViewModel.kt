@@ -104,8 +104,12 @@ class BudgetViewModel @Inject constructor(
             val bookId = _bookId.value
             if (bookId.isEmpty()) return@launch
 
+            val category = categoryId.takeIf { it.isNotEmpty() }?.let { categoryRepository.getCategoryById(it) }
+            val budgetName = category?.name ?: "总预算"
+
             val budget = Budget(
                 bookId = bookId,
+                name = budgetName,
                 categoryId = categoryId.takeIf { it.isNotEmpty() },
                 amount = amount,
                 startDate = System.currentTimeMillis()

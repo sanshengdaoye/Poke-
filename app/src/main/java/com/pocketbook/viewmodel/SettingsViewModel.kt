@@ -24,7 +24,7 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val themeMode: StateFlow<ThemeMode> = userPreferencesRepository.getPreferences()
-        .map { it?.theme ?: ThemeMode.SYSTEM }
+        .map { it?.themeMode ?: ThemeMode.SYSTEM }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -38,7 +38,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val current = userPreferencesRepository.getPreferences().firstOrNull()
             val newTheme = if (isDark) ThemeMode.DARK else ThemeMode.LIGHT
-            val prefs = current?.copy(theme = newTheme) ?: UserPreferences(theme = newTheme)
+            val prefs = current?.copy(themeMode = newTheme) ?: UserPreferences(themeMode = newTheme)
             userPreferencesRepository.savePreferences(prefs)
         }
     }

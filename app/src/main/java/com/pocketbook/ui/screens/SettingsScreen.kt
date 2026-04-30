@@ -1,11 +1,11 @@
 package com.pocketbook.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,14 +74,14 @@ fun SettingsScreen(
                     leadingContent = { Icon(Icons.Default.TableChart, contentDescription = null) },
                     modifier = Modifier.clickable { viewModel.exportCSV() }
                 )
-                Divider(indent = 56.dp)
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                 ListItem(
                     headlineContent = { Text("导出数据 (JSON)") },
                     supportingContent = { Text("完整数据备份") },
                     leadingContent = { Icon(Icons.Default.Code, contentDescription = null) },
                     modifier = Modifier.clickable { viewModel.exportJSON() }
                 )
-                Divider(indent = 56.dp)
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                 ListItem(
                     headlineContent = { Text("清除全部数据") },
                     supportingContent = { Text("删除所有记账记录，不可恢复") },

@@ -99,8 +99,9 @@ class DashboardViewModel @Inject constructor(
         cal.set(Calendar.SECOND, 59)
         val todayEnd = cal.timeInMillis
 
-        _todayExpense.value = transactionRepository.getTotalExpenseByDateRange(bookId, todayStart, todayEnd)
-        _todayIncome.value = transactionRepository.getTotalIncomeByDateRange(bookId, todayStart, todayEnd)
+        val todayTransactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, todayStart, todayEnd)
+        _todayExpense.value = todayTransactions.filter { it.type == com.pocketbook.data.entity.TransactionType.EXPENSE }.sumOf { it.amount }
+        _todayIncome.value = todayTransactions.filter { it.type == com.pocketbook.data.entity.TransactionType.INCOME }.sumOf { it.amount }
 
         // Week range (start of week)
         cal.timeInMillis = now
@@ -110,7 +111,8 @@ class DashboardViewModel @Inject constructor(
         cal.set(Calendar.SECOND, 0)
         val weekStart = cal.timeInMillis
 
-        _weekExpense.value = transactionRepository.getTotalExpenseByDateRange(bookId, weekStart, todayEnd)
+        val weekTransactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, weekStart, todayEnd)
+        _weekExpense.value = weekTransactions.filter { it.type == com.pocketbook.data.entity.TransactionType.EXPENSE }.sumOf { it.amount }
 
         // Month range
         cal.timeInMillis = now
@@ -126,12 +128,14 @@ class DashboardViewModel @Inject constructor(
         cal.set(Calendar.SECOND, 59)
         val monthEnd = cal.timeInMillis
 
-        _monthExpense.value = transactionRepository.getTotalExpenseByDateRange(bookId, monthStart, monthEnd)
-        _monthIncome.value = transactionRepository.getTotalIncomeByDateRange(bookId, monthStart, monthEnd)
+        val monthTransactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, monthStart, monthEnd)
+        _monthExpense.value = monthTransactions.filter { it.type == com.pocketbook.data.entity.TransactionType.EXPENSE }.sumOf { it.amount }
+        _monthIncome.value = monthTransactions.filter { it.type == com.pocketbook.data.entity.TransactionType.INCOME }.sumOf { it.amount }
 
         // Budget
-        val budget = budgetRepository.getBudgetByBookId(bookId)
-        _monthBudget.value = budget?.amount?.toLong()?.times(100)?.toLong() ?: 0L
+        val budgets = budgetRepository.getBudgetsByBook(bookId)
+        val totalBudget = budgets.filter { it.isActive }.sumOf { it.amount }
+        _monthBudget.value = totalBudget
         _monthBudgetUsed.value = _monthExpense.value
     }
 }

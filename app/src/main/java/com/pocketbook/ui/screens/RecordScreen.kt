@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +33,7 @@ import com.pocketbook.viewmodel.RecordViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordScreen(
     onSaveComplete: () -> Unit = {},
@@ -284,7 +286,7 @@ fun RecordScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(insight.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                Text(insight.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(insight.content, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

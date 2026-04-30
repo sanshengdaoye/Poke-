@@ -55,6 +55,10 @@ class DashboardViewModel @Inject constructor(
                 val todayExpense = todayTransactions.sumOf { it.amount }
                 val todayCount = todayTransactions.size
 
+                // 总交易数（判断是否是新用户）
+                val allTransactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, 0, Long.MAX_VALUE)
+                val isEmpty = allTransactions.isEmpty()
+
                 // 最近3笔交易
                 val recentTransactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, startOfMonth, endOfMonth)
                     .sortedByDescending { it.date }
@@ -77,28 +81,32 @@ class DashboardViewModel @Inject constructor(
                     (totalExpenseInPeriod.toFloat() / totalBudget.toFloat()).coerceIn(0f, 2f)
                 } else 0f
 
-                // 健康评分
-                val healthScore = calculateHealthScore(
-                    budgetExecution = budgetUsed,
-                    savingRate = if (monthIncome > 0) (monthBalance.toFloat() / monthIncome.toFloat()) else 0f,
-                    spendingVolatility = 0.2f,
-                    impulseCount = 0
-                )
-
-                // 最新洞察 - 使用 getTopUnread
-                val latestInsight = insightRepository.getTopUnread(bookId).firstOrNull()?.let { insight ->
-                    DashboardInsight(
-                        title = insight.title,
-                        description = insight.content,
-                        type = when (insight.type) {
-                            com.pocketbook.data.entity.InsightType.OVERSPEND_WARNING -> UiInsightType.OVERSPEND_WARNING
-                            com.pocketbook.data.entity.InsightType.SAVING_SUGGESTION -> UiInsightType.SAVING_SUGGESTION
-                            com.pocketbook.data.entity.InsightType.SAVING_MILESTONE -> UiInsightType.SAVING_MILESTONE
-                            com.pocketbook.data.entity.InsightType.IMPULSE_DETECTION -> UiInsightType.IMPULSE_DETECTION
-                            else -> UiInsightType.TREND_ANALYSIS
-                        }
+                // 健康评分（仅当有交易记录时计算）
+                val healthScore = if (!isEmpty) {
+                    calculateHealthScore(
+                        budgetExecution = budgetUsed,
+                        savingRate = if (monthIncome > 0) (monthBalance.toFloat() / monthIncome.toFloat()) else 0f,
+                        spendingVolatility = 0.2f,
+                        impulseCount = 0
                     )
-                }
+                } else 0
+
+                // 最新洞察
+                val latestInsight = if (!isEmpty) {
+                    insightRepository.getTopUnread(bookId).firstOrNull()?.let { insight ->
+                        DashboardInsight(
+                            title = insight.title,
+                            description = insight.content,
+                            type = when (insight.type) {
+                                com.pocketbook.data.entity.InsightType.OVERSPEND_WARNING -> UiInsightType.OVERSPEND_WARNING
+                                com.pocketbook.data.entity.InsightType.SAVING_SUGGESTION -> UiInsightType.SAVING_SUGGESTION
+                                com.pocketbook.data.entity.InsightType.SAVING_MILESTONE -> UiInsightType.SAVING_MILESTONE
+                                com.pocketbook.data.entity.InsightType.IMPULSE_DETECTION -> UiInsightType.IMPULSE_DETECTION
+                                else -> UiInsightType.TREND_ANALYSIS
+                            }
+                        )
+                    }
+                } else null
 
                 _uiState.value = DashboardUiState(
                     monthBalance = monthBalance,
@@ -113,7 +121,8 @@ class DashboardViewModel @Inject constructor(
                     todayExpense = todayExpense,
                     todayTransactionCount = todayCount,
                     recentTransactions = recentTransactions,
-                    latestInsight = latestInsight
+                    latestInsight = latestInsight,
+                    isEmpty = isEmpty
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -138,11 +147,6 @@ class DashboardViewModel @Inject constructor(
         val s4 = (100 - impulseCount * 10f).coerceIn(0f, 100f)
 
         return (s1 * w1 + s2 * w2 + s3 * w3 + s4 * w4).toInt().coerceIn(0, 100)
-    }
-
-    private fun calculateVolatility(bookId: String, year: Int, month: Int): Float {
-        // 简化实现：计算日均支出标准差/均值
-        return 0.2f // 占位，实际需按日统计
     }
 
     private fun getVolatilityLabel(volatility: Float): String {
@@ -220,7 +224,8 @@ data class DashboardUiState(
     val todayExpense: Long = 0,
     val todayTransactionCount: Int = 0,
     val recentTransactions: List<TransactionItem> = emptyList(),
-    val latestInsight: DashboardInsight? = null
+    val latestInsight: DashboardInsight? = null,
+    val isEmpty: Boolean = false  // 新增：是否是新用户（无交易记录）
 )
 
 data class DashboardInsight(

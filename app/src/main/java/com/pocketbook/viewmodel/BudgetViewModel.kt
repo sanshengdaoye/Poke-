@@ -32,7 +32,7 @@ class BudgetViewModel @Inject constructor(
 
     val budgets: StateFlow<List<Budget>> = _bookId.flatMapLatest { bookId ->
         if (bookId.isEmpty()) flowOf(emptyList())
-        else budgetRepository.getBudgetsByBook(bookId)
+        else flow { emit(budgetRepository.getBudgetsByBook(bookId)) }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -56,7 +56,7 @@ class BudgetViewModel @Inject constructor(
             val budget = Budget(
                 bookId = bookId,
                 name = "预算",
-                amount = amount / 100.0,
+                amount = amount,  // amount is already in cents
                 period = period,
                 startDate = startDate,
                 endDate = endDate

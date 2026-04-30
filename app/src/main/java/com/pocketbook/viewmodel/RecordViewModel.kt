@@ -47,7 +47,15 @@ class RecordViewModel @Inject constructor(
         onComplete: (List<Insight>) -> Unit
     ) {
         viewModelScope.launch {
-            val bookId = _bookId.value
+            var bookId = _bookId.value
+            if (bookId.isEmpty()) {
+                // Wait up to 2 seconds for default book to be available
+                bookId = try {
+                    _bookId.first { it.isNotEmpty() }
+                } catch (_: Exception) {
+                    ""
+                }
+            }
             if (bookId.isEmpty()) return@launch
 
             val amountInCents = ((amountStr.toDoubleOrNull() ?: 0.0) * 100).toLong()

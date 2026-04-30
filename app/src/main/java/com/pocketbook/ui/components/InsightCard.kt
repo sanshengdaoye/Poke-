@@ -62,7 +62,7 @@ fun InsightCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = insight.description,
+                    text = insight.content,
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )

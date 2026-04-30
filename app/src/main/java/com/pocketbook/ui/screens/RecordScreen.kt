@@ -41,8 +41,9 @@ fun RecordScreen(
     val categoryViewModel: CategoryViewModel = hiltViewModel()
 
     val accounts by viewModel.accounts.collectAsState()
-    val expenseCategories by categoryViewModel.expenseCategories.collectAsState()
-    val incomeCategories by categoryViewModel.incomeCategories.collectAsState()
+    val categories by categoryViewModel.categories.collectAsState()
+    val expenseCategories = categories.filter { it.type == com.pocketbook.data.entity.CategoryType.EXPENSE }
+    val incomeCategories = categories.filter { it.type == com.pocketbook.data.entity.CategoryType.INCOME }
 
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var amount by remember { mutableStateOf("") }

@@ -434,26 +434,15 @@ private fun PieChart(
             Spacer(modifier = Modifier.height(12.dp))
 
             // 图例（可点击）
-            FlowRow(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                maxItemsInEachRow = 4
+                horizontalArrangement = Arrangement.Center
             ) {
-                data.forEachIndexed { index, item ->
+                data.take(4).forEachIndexed { index, item ->
                     val color = pieColors.getOrElse(index) { MaterialTheme.colorScheme.primary }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (selectedIndex == index)
-                                    color.copy(alpha = 0.15f)
-                                else
-                                    Color.Transparent
-                            )
-                            .clickable { selectedIndex = if (selectedIndex == index) -1 else index }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    TextButton(
+                        onClick = { /* 点击分类 */ },
+                        modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -463,12 +452,8 @@ private fun PieChart(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = item.emoji,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = item.categoryName,
-                            fontSize = 12.sp
+                            text = "${item.emoji} ${item.categoryName}",
+                            fontSize = 11.sp
                         )
                     }
                 }
@@ -574,18 +559,17 @@ private fun TrendTab(uiState: StatsUiState, viewModel: StatsViewModel) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            SingleChoiceSegmentedButtonRow {
-                options.forEachIndexed { index, label ->
-                    SegmentedButton(
-                        selected = granularity == index,
-                        onClick = { granularity = index },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = options.size
-                        )
-                    ) {
-                        Text(label, fontSize = 12.sp)
+            options.forEachIndexed { index, label ->
+                val selected = granularity == index
+                TextButton(
+                    onClick = { granularity = index },
+                    colors = if (selected) {
+                        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                    } else {
+                        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                ) {
+                    Text(label, fontSize = 12.sp)
                 }
             }
         }

@@ -44,7 +44,7 @@ fun FlowScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "\u672c\u6708\u6d41\u6c34",
+            text = "本月流水",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
@@ -58,7 +58,7 @@ fun FlowScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "\u8fd8\u6ca1\u6709\u8bb0\u8d26\u8bb0\u5f55",
+                        text = "还没有记账记录",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -66,7 +66,7 @@ fun FlowScreen(
                     Button(onClick = onAddClick) {
                         Icon(Icons.Default.Add, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("\u8bb0\u4e00\u7b14")
+                        Text("记一笔")
                     }
                 }
             }
@@ -74,9 +74,10 @@ fun FlowScreen(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(transactions) { transaction ->
+                items(transactions, key = { it.id }) { transaction ->
                     TransactionItem(
                         transaction = transaction,
+                        categoryName = viewModel.getCategoryName(transaction.categoryId),
                         onDelete = { viewModel.deleteTransaction(transaction) }
                     )
                 }
@@ -101,7 +102,7 @@ fun SummaryCard(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             SummaryItem(
-                label = "\u672c\u6708\u6536\u5165",
+                label = "本月收入",
                 amount = income,
                 color = Color(0xFF43A047)
             )
@@ -112,7 +113,7 @@ fun SummaryCard(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
             SummaryItem(
-                label = "\u672c\u6708\u652f\u51fa",
+                label = "本月支出",
                 amount = expense,
                 color = Color(0xFFE53935)
             )
@@ -123,7 +124,7 @@ fun SummaryCard(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
             SummaryItem(
-                label = "\u7ed3\u4f59",
+                label = "结余",
                 amount = income - expense,
                 color = if (income >= expense) Color(0xFF43A047) else Color(0xFFE53935)
             )
@@ -145,7 +146,7 @@ fun SummaryItem(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "\u00A5 ${amount / 100}.${String.format("%02d", amount % 100)}",
+            text = "¥ ${amount / 100}.${String.format("%02d", amount % 100)}",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = color
@@ -156,6 +157,7 @@ fun SummaryItem(
 @Composable
 fun TransactionItem(
     transaction: Transaction,
+    categoryName: String,
     onDelete: () -> Unit
 ) {
     val isExpense = transaction.type == TransactionType.EXPENSE
@@ -175,7 +177,7 @@ fun TransactionItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = transaction.categoryId ?: "\u672a\u5206\u7c7b",
+                    text = categoryName,
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp
                 )
@@ -197,7 +199,7 @@ fun TransactionItem(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "$sign\u00A5 ${transaction.amount / 100}.${String.format("%02d", transaction.amount % 100)}",
+                    text = "$sign¥ ${transaction.amount / 100}.${String.format("%02d", transaction.amount % 100)}",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = amountColor

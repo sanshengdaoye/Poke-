@@ -89,7 +89,7 @@ class DashboardViewModel @Inject constructor(
                 val latestInsight = insightRepository.getTopUnread(bookId).firstOrNull()?.let { insight ->
                     DashboardInsight(
                         title = insight.title,
-                        description = insight.description,
+                        description = insight.content,
                         type = when (insight.type) {
                             com.pocketbook.data.entity.InsightType.OVERSPEND_WARNING -> UiInsightType.OVERSPEND_WARNING
                             com.pocketbook.data.entity.InsightType.SAVING_SUGGESTION -> UiInsightType.SAVING_SUGGESTION

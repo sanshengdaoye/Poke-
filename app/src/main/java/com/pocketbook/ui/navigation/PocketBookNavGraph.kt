@@ -102,10 +102,7 @@ fun PocketBookNavGraph() {
                 BudgetScreen()
             }
             composable(Screen.Me.route) {
-                MeScreen(
-                    onExportClick = { /* TODO: 导出 */ },
-                    onAboutClick = { /* TODO: 关于 */ }
-                )
+                MeScreen()
             }
             composable("record") {
                 RecordScreen(
@@ -113,10 +110,10 @@ fun PocketBookNavGraph() {
                 )
             }
             composable("settings") {
-                SettingsScreen()
+                SettingsScreen(onBack = { navController.popBackStack() })
             }
             composable("accounts") {
-                AccountScreen()
+                AccountScreen(onBack = { navController.popBackStack() })
             }
             composable("insights") {
                 InsightScreen(onBack = { navController.popBackStack() })

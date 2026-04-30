@@ -27,7 +27,7 @@ fun InsightCard(
         InsightSeverity.CRITICAL -> Triple(
             Color(0xFFFFEBEE), Color(0xFFE53935), Icons.Default.Warning
         )
-        InsightSeverity.WARNING -> Triple(
+        InsightSeverity.HIGH -> Triple(
             Color(0xFFFFF8E1), Color(0xFFFFA000), Icons.Default.Warning
         )
         else -> Triple(

@@ -31,10 +31,3 @@ enum class InsightType {
     BUDGET_HEALTH,
     DAILY_BUDGET_ALERT
 }
-
-enum class InsightSeverity {
-    LOW,
-    MEDIUM,
-    HIGH,
-    CRITICAL
-}

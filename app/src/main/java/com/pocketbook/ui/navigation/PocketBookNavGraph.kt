@@ -61,12 +61,15 @@ fun PocketBookNavGraph() {
                         label = { Text(screen.title) },
                         selected = selected,
                         onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            val currentRoute = currentDestination?.route
+                            if (currentRoute != screen.route) {
+                                navController.navigate(screen.route) {
+                                    popUpTo(Screen.Dashboard.route) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                         }
                     )

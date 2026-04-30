@@ -110,7 +110,34 @@ fun RecordScreen(
                             IconButton(
                                 onClick = {
                                     val result = nlpParser.parse(nlpInput, filteredCategories)
-                                    if (result != null) {
+                                    if (result != null && result.category != null && result.amount.isNotEmpty()) {
+                                        // Directly save - no need for second confirm
+                                        val nlpAmount = result.amount
+                                        val nlpCategory = result.category
+                                        val nlpNote = if (result.note.isNotBlank() && result.note != result.category.name) 
+                                            result.note else ""
+                                        val nlpType = if (result.type == com.pocketbook.data.entity.CategoryType.INCOME) 
+                                            TransactionType.INCOME else TransactionType.EXPENSE
+
+                                        viewModel.createTransaction(
+                                            amountStr = nlpAmount,
+                                            type = nlpType,
+                                            categoryId = nlpCategory.id,
+                                            accountId = selectedAccount?.id,
+                                            date = selectedDate,
+                                            note = nlpNote.takeIf { it.isNotBlank() }
+                                        ) { generatedInsights ->
+                                            insights = generatedInsights
+                                            if (generatedInsights.isNotEmpty()) {
+                                                showInsights = true
+                                            } else {
+                                                onSaveComplete()
+                                            }
+                                        }
+                                        nlpInput = ""
+                                        nlpPreview = ""
+                                    } else if (result != null) {
+                                        // Fallback: just fill the form if parsing incomplete
                                         amount = result.amount
                                         selectedCategory = result.category
                                         if (result.note.isNotBlank() && result.note != result.category?.name) {
@@ -128,7 +155,7 @@ fun RecordScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Send,
-                                    contentDescription = "解析",
+                                    contentDescription = "智能记账",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }

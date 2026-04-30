@@ -3,6 +3,7 @@ package com.pocketbook.repository
 import com.pocketbook.data.dao.TransactionDao
 import com.pocketbook.data.entity.Transaction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,7 +30,7 @@ class TransactionRepository @Inject constructor(
     suspend fun getTotalExpense(bookId: String): Long = transactionDao.getTotalExpense(bookId) ?: 0L
 
     suspend fun getTransactionsByBookAndDateRange(bookId: String, start: Long, end: Long): List<Transaction> =
-        transactionDao.getByBookAndDateRange(bookId, start, end)
+        transactionDao.getByBookAndDateRange(bookId, start, end).first()
 
     // --- M3 新增 ---
 

@@ -30,7 +30,7 @@ class RecordViewModel @Inject constructor(
             initialValue = ""
         )
 
-    val accounts: StateFlow<List<Account>> = accountRepository.getActive()
+    val accounts: StateFlow<List<Account>> = accountRepository.getActiveAccounts()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -50,12 +50,12 @@ class RecordViewModel @Inject constructor(
             val bookId = _bookId.value
             if (bookId.isEmpty()) return@launch
 
-            val amountInCents = (amountStr.toDoubleOrNull() ?: 0.0) * 100
+            val amountInCents = ((amountStr.toDoubleOrNull() ?: 0.0) * 100).toLong()
 
             val transaction = Transaction(
                 bookId = bookId,
                 type = type,
-                amount = amountInCents.toLong(),
+                amount = amountInCents,
                 categoryId = categoryId,
                 accountId = accountId,
                 date = date,
@@ -71,7 +71,9 @@ class RecordViewModel @Inject constructor(
             }
 
             // Generate insights
-            val insights = insightEngine.generateInsights(bookId, transaction)
+            val insights = mutableListOf<com.pocketbook.data.entity.Insight>()
+            val impulseInsight = insightEngine.detectImpulseSpending(bookId, transaction)
+            if (impulseInsight != null) insights.add(impulseInsight)
             onComplete(insights)
         }
     }

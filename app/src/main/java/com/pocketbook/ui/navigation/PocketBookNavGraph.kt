@@ -116,7 +116,7 @@ fun PocketBookNavGraph() {
                 SettingsScreen(onBack = { navController.popBackStack() })
             }
             composable("accounts") {
-                AccountScreen(onBack = { navController.popBackStack() })
+                AccountScreen()
             }
             composable("insights") {
                 InsightScreen(onBack = { navController.popBackStack() })

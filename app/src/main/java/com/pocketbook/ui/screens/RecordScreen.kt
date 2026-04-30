@@ -66,6 +66,88 @@ fun RecordScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        // NLP智能记账输入
+        var nlpInput by remember { mutableStateOf("") }
+        var nlpPreview by remember { mutableStateOf("") }
+        val nlpParser = remember { com.pocketbook.service.NlpParser() }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = "智能记账",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = nlpInput,
+                    onValueChange = { 
+                        nlpInput = it
+                        if (it.isNotBlank()) {
+                            val result = nlpParser.parse(it, filteredCategories)
+                            nlpPreview = if (result != null && result.category != null) {
+                                "${result.category.name} ¥${result.amount}"
+                            } else if (result != null) {
+                                "¥${result.amount}（未识别分类）"
+                            } else ""
+                        } else {
+                            nlpPreview = ""
+                        }
+                    },
+                    placeholder = { Text("试试：午餐35、打车20、工资5000...", fontSize = 13.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                    trailingIcon = {
+                        if (nlpInput.isNotBlank()) {
+                            IconButton(
+                                onClick = {
+                                    val result = nlpParser.parse(nlpInput, filteredCategories)
+                                    if (result != null) {
+                                        amount = result.amount
+                                        selectedCategory = result.category
+                                        if (result.note.isNotBlank() && result.note != result.category?.name) {
+                                            note = result.note
+                                        }
+                                        if (result.category != null) {
+                                            selectedType = if (result.type == com.pocketbook.data.entity.CategoryType.INCOME) 
+                                                TransactionType.INCOME else TransactionType.EXPENSE
+                                        }
+                                        nlpInput = ""
+                                        nlpPreview = ""
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Send,
+                                    contentDescription = "解析",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                )
+                if (nlpPreview.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "识别结果: $nlpPreview",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // 类型切换
         TypeSelector(selectedType = selectedType, onTypeSelected = {
             selectedType = it

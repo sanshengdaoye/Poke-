@@ -20,14 +20,21 @@ data class Insight(
 )
 
 enum class InsightType {
-    SPENDING_PATTERN,    // 消费模式分析
-    BUDGET_ALERT,        // 预算预警
-    SAVING_SUGGESTION,   // 储蓄建议
-    ANOMALY_DETECTION,   // 异常消费检测
-    MONTHLY_SUMMARY,     // 月度总结
-    OVERSPEND_WARNING,   // 超支预警
-    SAVING_MILESTONE,    // 储蓄里程碑
-    IMPULSE_DETECTION,   // 冲动消费检测
-    BUDGET_HEALTH,       // 预算健康度
-    DAILY_BUDGET_ALERT   // 日均预算预警
+    SPENDING_PATTERN,
+    BUDGET_ALERT,
+    SAVING_SUGGESTION,
+    ANOMALY_DETECTION,
+    MONTHLY_SUMMARY,
+    OVERSPEND_WARNING,
+    SAVING_MILESTONE,
+    IMPULSE_DETECTION,
+    BUDGET_HEALTH,
+    DAILY_BUDGET_ALERT
+}
+
+enum class InsightSeverity {
+    LOW,
+    MEDIUM,
+    HIGH,
+    CRITICAL
 }

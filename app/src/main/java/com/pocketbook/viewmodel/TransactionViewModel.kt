@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pocketbook.data.entity.Transaction
 import com.pocketbook.data.entity.TransactionType
 import com.pocketbook.di.DefaultBookProvider
+import com.pocketbook.repository.CategoryRepository
 import com.pocketbook.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -15,6 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
     private val repository: TransactionRepository,
+    private val categoryRepository: CategoryRepository,
     defaultBookProvider: DefaultBookProvider
 ) : ViewModel() {
 
@@ -51,6 +53,10 @@ class TransactionViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    // Category name lookup cache
+    private val _categoryNames = MutableStateFlow<Map<String, String>>(emptyMap())
+    val categoryNames: StateFlow<Map<String, String>> = _categoryNames.asStateFlow()
+
     private val _totalIncome = MutableStateFlow(0L)
     val totalIncome: StateFlow<Long> = _totalIncome.asStateFlow()
 
@@ -68,14 +74,30 @@ class TransactionViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            transactions.collect {
+            transactions.collect { txs ->
                 val bookId = _bookId.value
                 if (bookId.isNotEmpty()) {
                     _totalIncome.value = repository.getTotalIncome(bookId)
                     _totalExpense.value = repository.getTotalExpense(bookId)
                 }
+                // Build category name cache
+                val names = mutableMapOf<String, String>()
+                txs.forEach { t ->
+                    t.categoryId?.let { catId ->
+                        if (!names.containsKey(catId)) {
+                            val cat = categoryRepository.getCategoryById(catId)
+                            names[catId] = cat?.name ?: "未分类"
+                        }
+                    }
+                }
+                _categoryNames.value = names
             }
         }
+    }
+
+    fun getCategoryName(categoryId: String?): String {
+        if (categoryId == null) return "未分类"
+        return _categoryNames.value[categoryId] ?: "未分类"
     }
 
     fun createTransaction(transaction: Transaction) {

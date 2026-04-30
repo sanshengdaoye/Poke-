@@ -2,6 +2,7 @@ package com.pocketbook.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -674,64 +675,78 @@ private fun LineChart(
             }
         }
 
-        // 折线
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val chartWidth = size.width
-            val chartHeight = size.height - 20.dp.toPx()
-            val stepX = chartWidth / maxOf(data.size - 1, 1)
-
-            // 支出线
-            if (data.size > 1) {
-                for (i in 0 until data.size - 1) {
-                    val x1 = i * stepX
-                    val x2 = (i + 1) * stepX
-                    val y1 = chartHeight - (data[i].expense.toFloat() / maxValue.toFloat()) * chartHeight
-                    val y2 = chartHeight - (data[i + 1].expense.toFloat() / maxValue.toFloat()) * chartHeight
-
-                    drawLine(
-                        color = expenseColor,
-                        start = Offset(x1, y1),
-                        end = Offset(x2, y2),
-                        strokeWidth = 2.dp.toPx()
-                    )
-                }
-            }
-
-            // 收入线
-            if (data.size > 1) {
-                for (i in 0 until data.size - 1) {
-                    val x1 = i * stepX
-                    val x2 = (i + 1) * stepX
-                    val y1 = chartHeight - (data[i].income.toFloat() / maxValue.toFloat()) * chartHeight
-                    val y2 = chartHeight - (data[i + 1].income.toFloat() / maxValue.toFloat()) * chartHeight
-
-                    drawLine(
-                        color = incomeColor,
-                        start = Offset(x1, y1),
-                        end = Offset(x2, y2),
-                        strokeWidth = 2.dp.toPx()
-                    )
-                }
-            }
-
-            // 数据点
-            data.forEachIndexed { index, item ->
-                val x = index * stepX
-                val yExpense = chartHeight - (item.expense.toFloat() / maxValue.toFloat()) * chartHeight
-                val yIncome = chartHeight - (item.income.toFloat() / maxValue.toFloat()) * chartHeight
-
-                drawCircle(
-                    color = expenseColor,
-                    radius = 3.dp.toPx(),
-                    center = Offset(x, yExpense)
-                )
-                drawCircle(
-                    color = incomeColor,
-                    radius = 3.dp.toPx(),
-                    center = Offset(x, yIncome)
-                )
-            }
+        // 折线 - 使用 drawBehind 绘制
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val expensePoints = remember(data) {
+            data.map { it.expense.toFloat() / maxValue.toFloat() }
         }
+        val incomePoints = remember(data) {
+            data.map { it.income.toFloat() / maxValue.toFloat() }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .padding(8.dp)
+                .drawBehind {
+                    val chartWidth = size.width
+                    val chartHeight = size.height
+                    val stepX = chartWidth / maxOf(data.size - 1, 1)
+
+                    // 支出线
+                    if (data.size > 1) {
+                        for (i in 0 until data.size - 1) {
+                            val x1 = i * stepX
+                            val x2 = (i + 1) * stepX
+                            val y1 = chartHeight - expensePoints[i] * chartHeight
+                            val y2 = chartHeight - expensePoints[i + 1] * chartHeight
+
+                            this.drawLine(
+                                color = expenseColor,
+                                start = Offset(x1, y1),
+                                end = Offset(x2, y2),
+                                strokeWidth = with(density) { 2.dp.toPx() }
+                            )
+                        }
+                    }
+
+                    // 收入线
+                    if (data.size > 1) {
+                        for (i in 0 until data.size - 1) {
+                            val x1 = i * stepX
+                            val x2 = (i + 1) * stepX
+                            val y1 = chartHeight - incomePoints[i] * chartHeight
+                            val y2 = chartHeight - incomePoints[i + 1] * chartHeight
+
+                            this.drawLine(
+                                color = incomeColor,
+                                start = Offset(x1, y1),
+                                end = Offset(x2, y2),
+                                strokeWidth = with(density) { 2.dp.toPx() }
+                            )
+                        }
+                    }
+
+                    // 数据点
+                    data.forEachIndexed { index, item ->
+                        val x = index * stepX
+                        val yExpense = chartHeight - expensePoints[index] * chartHeight
+                        val yIncome = chartHeight - incomePoints[index] * chartHeight
+
+                        this.drawCircle(
+                            color = expenseColor,
+                            radius = with(density) { 3.dp.toPx() },
+                            center = Offset(x, yExpense)
+                        )
+                        this.drawCircle(
+                            color = incomeColor,
+                            radius = with(density) { 3.dp.toPx() },
+                            center = Offset(x, yIncome)
+                        )
+                    }
+                }
+        )
     }
 
     // 图例

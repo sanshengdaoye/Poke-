@@ -2,11 +2,9 @@ package com.pocketbook.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pocketbook.data.entity.Account
 import com.pocketbook.data.entity.Budget
 import com.pocketbook.data.entity.TransactionType
 import com.pocketbook.di.DefaultBookProvider
-import com.pocketbook.repository.AccountRepository
 import com.pocketbook.repository.BudgetRepository
 import com.pocketbook.repository.CategoryRepository
 import com.pocketbook.repository.TransactionRepository
@@ -22,7 +20,6 @@ class BudgetViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
-    private val accountRepository: AccountRepository,
     defaultBookProvider: DefaultBookProvider
 ) : ViewModel() {
 
@@ -33,10 +30,17 @@ class BudgetViewModel @Inject constructor(
             initialValue = ""
         )
 
-    private val _budgets = MutableStateFlow<List<Budget>>(emptyList())
-    val budgets: StateFlow<List<Budget>> = _budgets.asStateFlow()
+    // 预算列表
+    val budgets: StateFlow<List<Budget>> = _bookId.flatMapLatest { bookId ->
+        if (bookId.isEmpty()) flowOf(emptyList())
+        else budgetRepository.getActiveBudgets(bookId)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
-    val totalBudget: StateFlow<Long> = _budgets.map { list ->
+    val totalBudget: StateFlow<Long> = budgets.map { list ->
         list.sumOf { it.amount }
     }.stateIn(
         scope = viewModelScope,
@@ -44,7 +48,7 @@ class BudgetViewModel @Inject constructor(
         initialValue = 0L
     )
 
-    val totalUsed: StateFlow<Long> = combine(_bookId, _budgets) { bookId, budgets ->
+    val totalUsed: StateFlow<Long> = combine(_bookId, budgets) { bookId, _ ->
         if (bookId.isEmpty()) 0L
         else transactionRepository.getTotalExpense(bookId)
     }.stateIn(
@@ -53,7 +57,7 @@ class BudgetViewModel @Inject constructor(
         initialValue = 0L
     )
 
-    val categoryBudgets: StateFlow<List<CategoryBudgetDisplay>> = combine(_bookId, _budgets) { bookId, budgets ->
+    val categoryBudgets: StateFlow<List<CategoryBudgetDisplay>> = combine(_bookId, budgets) { bookId, budgetList ->
         if (bookId.isEmpty()) return@combine emptyList()
 
         val cal = Calendar.getInstance()
@@ -72,7 +76,7 @@ class BudgetViewModel @Inject constructor(
         val transactions = transactionRepository.getTransactionsByBookAndDateRange(bookId, start, end)
             .filter { it.type == TransactionType.EXPENSE }
 
-        budgets.mapNotNull { budget ->
+        budgetList.mapNotNull { budget ->
             val category = budget.categoryId?.let { categoryRepository.getCategoryById(it) }
             val used = if (budget.categoryId != null) {
                 transactions.filter { it.categoryId == budget.categoryId }.sumOf { it.amount }
@@ -95,16 +99,6 @@ class BudgetViewModel @Inject constructor(
         initialValue = emptyList()
     )
 
-    init {
-        viewModelScope.launch {
-            _bookId.collect { bookId ->
-                if (bookId.isNotEmpty()) {
-                    _budgets.value = budgetRepository.getBudgetsByBook(bookId)
-                }
-            }
-        }
-    }
-
     fun createBudget(categoryId: String, amount: Long) {
         viewModelScope.launch {
             val bookId = _bookId.value
@@ -117,31 +111,25 @@ class BudgetViewModel @Inject constructor(
                 startDate = System.currentTimeMillis()
             )
             budgetRepository.createBudget(budget)
-            _budgets.value = budgetRepository.getBudgetsByBook(bookId)
         }
     }
 
     fun updateBudget(budgetId: String, amount: Long) {
         viewModelScope.launch {
-            val bookId = _bookId.value
-            if (bookId.isEmpty()) return@launch
-
-            val existing = _budgets.value.find { it.id == budgetId }
+            val existing = budgets.value.find { it.id == budgetId }
             if (existing != null) {
                 val updated = existing.copy(amount = amount)
                 budgetRepository.updateBudget(updated)
-                _budgets.value = budgetRepository.getBudgetsByBook(bookId)
             }
         }
     }
 
     fun deleteBudget(budgetId: String) {
         viewModelScope.launch {
-            val bookId = _bookId.value
-            if (bookId.isEmpty()) return@launch
-
-            budgetRepository.deleteBudget(budgetId)
-            _budgets.value = budgetRepository.getBudgetsByBook(bookId)
+            val budget = budgets.value.find { it.id == budgetId }
+            if (budget != null) {
+                budgetRepository.deleteBudget(budget)
+            }
         }
     }
 

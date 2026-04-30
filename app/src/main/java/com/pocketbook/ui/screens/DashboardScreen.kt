@@ -100,13 +100,17 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 消费健康评分卡片
-            HealthScoreCard(
-                score = uiState.healthScore,
-                budgetExecution = uiState.budgetExecutionRate,
-                spendingVolatility = uiState.spendingVolatility,
-                savingRate = uiState.savingRate
-            )
+            // 消费健康评分卡片（新用户显示欢迎引导）
+            if (uiState.isEmpty) {
+                WelcomeCard()
+            } else {
+                HealthScoreCard(
+                    score = uiState.healthScore,
+                    budgetExecution = uiState.budgetExecutionRate,
+                    spendingVolatility = uiState.spendingVolatility,
+                    savingRate = uiState.savingRate
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

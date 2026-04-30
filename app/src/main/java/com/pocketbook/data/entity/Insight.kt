@@ -12,6 +12,7 @@ data class Insight(
     val type: InsightType,
     val title: String,
     val content: String,
+    val severity: InsightSeverity? = null,
     val periodStart: Long? = null,
     val periodEnd: Long? = null,
     val isRead: Boolean = false,

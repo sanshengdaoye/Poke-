@@ -31,11 +31,3 @@ enum class InsightType {
     BUDGET_HEALTH,       // 预算健康度
     DAILY_BUDGET_ALERT   // 日均预算预警
 }
-
-enum class InsightSeverity {
-    LOW,      // 低
-    MEDIUM,   // 中
-    HIGH,     // 高
-    WARNING,  // 警告
-    CRITICAL  // 严重
-}

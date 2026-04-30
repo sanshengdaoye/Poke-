@@ -28,10 +28,15 @@ class AccountViewModel @Inject constructor(
             initialValue = ""
         )
 
-    private val _accounts = MutableStateFlow<List<Account>>(emptyList())
-    val accounts: StateFlow<List<Account>> = _accounts.asStateFlow()
+    // 所有账户（不区分bookId，Repository层没有按bookId过滤的方法）
+    val accounts: StateFlow<List<Account>> = accountRepository.getAllAccounts()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
-    val totalBalance: StateFlow<Long> = _accounts.map { list ->
+    val totalBalance: StateFlow<Long> = accounts.map { list ->
         list.sumOf { it.balance }
     }.stateIn(
         scope = viewModelScope,
@@ -58,57 +63,33 @@ class AccountViewModel @Inject constructor(
         initialValue = emptyList()
     )
 
-    init {
-        viewModelScope.launch {
-            _bookId.collect { bookId ->
-                if (bookId.isNotEmpty()) {
-                    _accounts.value = accountRepository.getAccountsByBook(bookId)
-                        .sortedByDescending { it.isDefault }
-                }
-            }
-        }
-    }
-
     fun createAccount(name: String, type: AccountType) {
         viewModelScope.launch {
-            val bookId = _bookId.value
-            if (bookId.isEmpty()) return@launch
-
             val account = Account(
                 name = name,
                 type = type,
                 balance = 0
             )
             accountRepository.createAccount(account)
-            _accounts.value = accountRepository.getAccountsByBook(bookId)
-                .sortedByDescending { it.isDefault }
         }
     }
 
     fun updateAccount(accountId: String, name: String, type: AccountType) {
         viewModelScope.launch {
-            val bookId = _bookId.value
-            if (bookId.isEmpty()) return@launch
-
-            val existing = _accounts.value.find { it.id == accountId }
+            val existing = accounts.value.find { it.id == accountId }
             if (existing != null) {
                 val updated = existing.copy(name = name, type = type)
                 accountRepository.updateAccount(updated)
-                _accounts.value = accountRepository.getAccountsByBook(bookId)
-                    .sortedByDescending { it.isDefault }
             }
         }
     }
 
     fun deleteAccount(accountId: String) {
         viewModelScope.launch {
-            val bookId = _bookId.value
-            if (bookId.isEmpty()) return@launch
-
-            accountRepository.deleteAccount(accountId)
-            _accounts.value = accountRepository.getAccountsByBook(bookId)
-                .sortedByDescending { it.isDefault }
-
+            val account = accounts.value.find { it.id == accountId }
+            if (account != null) {
+                accountRepository.deleteAccount(account)
+            }
             if (_selectedAccount.value?.id == accountId) {
                 _selectedAccount.value = null
             }

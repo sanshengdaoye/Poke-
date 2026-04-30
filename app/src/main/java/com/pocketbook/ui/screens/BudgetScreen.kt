@@ -178,15 +178,16 @@ private fun TotalBudgetCard(totalBudget: Long, totalUsed: Long) {
 private fun CanvasRing(percent: Float, isOver: Boolean) {
     val color = if (isOver) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .drawBehind {
-                val strokeWidth = 12.dp.toPx()
-                val radius = (size.minDimension - strokeWidth) / 2
-                val centerX = size.width / 2
-                val centerY = size.height / 2
+                val strokeWidth = with(density) { 12.dp.toPx() }
+                val radius = (this.size.minDimension - strokeWidth) / 2
+                val centerX = this.size.width / 2
+                val centerY = this.size.height / 2
 
                 // 背景环
                 drawArc(
@@ -195,7 +196,7 @@ private fun CanvasRing(percent: Float, isOver: Boolean) {
                     sweepAngle = 360f,
                     useCenter = false,
                     topLeft = Offset(centerX - radius, centerY - radius),
-                    size = Size(radius * 2, radius * 2),
+                    size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
 
@@ -206,7 +207,7 @@ private fun CanvasRing(percent: Float, isOver: Boolean) {
                     sweepAngle = 360f * percent,
                     useCenter = false,
                     topLeft = Offset(centerX - radius, centerY - radius),
-                    size = Size(radius * 2, radius * 2),
+                    size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
             }

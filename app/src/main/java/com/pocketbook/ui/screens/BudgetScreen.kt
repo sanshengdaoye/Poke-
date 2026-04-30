@@ -1,12 +1,12 @@
 package com.pocketbook.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,215 +18,353 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pocketbook.data.entity.Budget
-import com.pocketbook.data.entity.BudgetPeriod
 import com.pocketbook.viewmodel.BudgetViewModel
+import java.text.NumberFormat
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetScreen(
     viewModel: BudgetViewModel = hiltViewModel()
 ) {
     val budgets by viewModel.budgets.collectAsState()
-    val showAddDialog by viewModel.showAddDialog.collectAsState()
+    val totalBudget by viewModel.totalBudget.collectAsState()
+    val totalUsed by viewModel.totalUsed.collectAsState()
+    val categories by viewModel.categoryBudgets.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "预算管理",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingBudget by remember { mutableStateOf<Budget?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("预算管理") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
-
-            FilledTonalIconButton(onClick = { viewModel.showAddDialog() }) {
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                shape = CircleShape
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "添加预算")
             }
         }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            // 总预算环形图
+            TotalBudgetCard(
+                totalBudget = totalBudget,
+                totalUsed = totalUsed
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        if (budgets.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "还没有设置预算",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = "分类预算",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            if (categories.isEmpty()) {
+                EmptyBudgetState(onAdd = { showAddDialog = true })
+            } else {
+                categories.forEach { item ->
+                    CategoryBudgetItem(
+                        categoryName = item.categoryName,
+                        emoji = item.emoji,
+                        budgetAmount = item.budgetAmount,
+                        usedAmount = item.usedAmount,
+                        percent = item.percent,
+                        onEdit = { editingBudget = item.rawBudget }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.showAddDialog() }) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("添加预算")
-                    }
-                }
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(budgets) { budget ->
-                    BudgetItem(
-                        budget = budget,
-                        onDelete = { viewModel.deleteBudget(budget) }
-                    )
                 }
             }
         }
     }
 
-    if (showAddDialog) {
-        AddBudgetDialog(
-            onDismiss = { viewModel.hideAddDialog() },
-            onConfirm = { amount, period ->
-                viewModel.createBudget(amount, period)
+    // 添加/编辑预算对话框
+    if (showAddDialog || editingBudget != null) {
+        BudgetEditDialog(
+            budget = editingBudget,
+            onDismiss = {
+                showAddDialog = false
+                editingBudget = null
+            },
+            onSave = { categoryId, amount ->
+                if (editingBudget != null) {
+                    viewModel.updateBudget(editingBudget!!.id, amount)
+                } else {
+                    viewModel.createBudget(categoryId, amount)
+                }
+                showAddDialog = false
+                editingBudget = null
+            },
+            onDelete = { budgetId ->
+                viewModel.deleteBudget(budgetId)
+                editingBudget = null
             }
         )
     }
 }
 
 @Composable
-fun BudgetItem(
-    budget: Budget,
-    onDelete: () -> Unit
-) {
-    val budgetAmount = budget.amount.toLong()
-    val spent = remember { mutableLongStateOf(0L) }
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(budget.id) {
-        // This would need actual spent calculation from repository
-        // For now, using placeholder
-        spent.longValue = (budgetAmount * 0.6).toLong() // placeholder
-    }
-
-    val progress = if (budgetAmount > 0) spent.longValue.toFloat() / budgetAmount.toFloat() else 0f
-    val isOverBudget = spent.longValue > budgetAmount
-
-    val progressColor = when {
-        progress >= 1f -> Color(0xFFE53935)
-        progress >= 0.8f -> Color(0xFFFFA000)
-        else -> Color(0xFF43A047)
-    }
+private fun TotalBudgetCard(totalBudget: Long, totalUsed: Long) {
+    val percent = if (totalBudget > 0) totalUsed.toFloat() / totalBudget.toFloat() else 0f
+    val isOver = percent > 1f
+    val remaining = totalBudget - totalUsed
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = "本月预算",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 环形进度
+            Box(
+                modifier = Modifier.size(140.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column {
+                CanvasRing(percent = percent.coerceIn(0f, 1f), isOver = isOver)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "预算",
-                        fontSize = 14.sp,
+                        text = if (isOver) "超支" else "剩余",
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "¥ ${spent.longValue / 100}.${String.format("%02d", spent.longValue % 100)} / ¥ ${budgetAmount / 100}.${String.format("%02d", budgetAmount % 100)}",
-                        fontSize = 18.sp,
+                        text = formatMoney(abs(remaining)),
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isOverBudget) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error
+                        color = if (isOver) Color(0xFFC62828) else MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = progressColor,
-                trackColor = progressColor.copy(alpha = 0.2f)
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = if (isOverBudget) {
-                    "已超支 ¥ ${(spent.longValue - budgetAmount) / 100}.${String.format("%02d", (spent.longValue - budgetAmount) % 100)}"
-                } else {
-                    "还剩 ¥ ${(budgetAmount - spent.longValue) / 100}.${String.format("%02d", (budgetAmount - spent.longValue) % 100)} (${((1 - progress) * 100).toInt()}%)"
-                },
-                fontSize = 12.sp,
-                color = if (isOverBudget) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                BudgetMetric("总预算", totalBudget)
+                BudgetMetric("已用", totalUsed)
+                BudgetMetric("剩余", remaining.coerceAtLeast(0))
+            }
         }
     }
 }
 
 @Composable
-fun AddBudgetDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (Long, BudgetPeriod) -> Unit
+private fun CanvasRing(percent: Float, isOver: Boolean) {
+    val color = if (isOver) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                val strokeWidth = 12.dp.toPx()
+                val radius = (size.minDimension - strokeWidth) / 2
+                val centerX = size.width / 2
+                val centerY = size.height / 2
+
+                // 背景环
+                drawArc(
+                    color = trackColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = Offset(centerX - radius, centerY - radius),
+                    size = Size(radius * 2, radius * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+
+                // 进度环
+                drawArc(
+                    color = color,
+                    startAngle = -90f,
+                    sweepAngle = 360f * percent,
+                    useCenter = false,
+                    topLeft = Offset(centerX - radius, centerY - radius),
+                    size = Size(radius * 2, radius * 2),
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                )
+            }
+    )
+}
+
+@Composable
+private fun BudgetMetric(label: String, amount: Long) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = formatMoney(amount),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun CategoryBudgetItem(
+    categoryName: String,
+    emoji: String,
+    budgetAmount: Long,
+    usedAmount: Long,
+    percent: Float,
+    onEdit: () -> Unit
 ) {
-    var amount by remember { mutableStateOf("") }
-    var selectedPeriod by remember { mutableStateOf(BudgetPeriod.MONTHLY) }
+    val isOver = usedAmount > budgetAmount
+    val isWarning = percent > 0.8f && !isOver
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = emoji, fontSize = 20.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = categoryName,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Text(
+                    text = "${(percent * 100).toInt()}%",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = when {
+                        isOver -> Color(0xFFC62828)
+                        isWarning -> Color(0xFFF57C00)
+                        else -> MaterialTheme.colorScheme.primary
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = { percent.coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = when {
+                    isOver -> Color(0xFFC62828)
+                    isWarning -> Color(0xFFF57C00)
+                    else -> MaterialTheme.colorScheme.primary
+                },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "已用 ${formatMoney(usedAmount)}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "预算 ${formatMoney(budgetAmount)}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyBudgetState(onAdd: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "📊", fontSize = 48.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "还没有设置预算",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onAdd) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("添加预算")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BudgetEditDialog(
+    budget: com.pocketbook.data.entity.Budget?,
+    onDismiss: () -> Unit,
+    onSave: (String, Long) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    var amount by remember { mutableStateOf(budget?.amount?.let { it / 100.0 }?.toString() ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加预算") },
+        title = { Text(if (budget == null) "添加预算" else "编辑预算") },
         text = {
             Column {
+                Text(
+                    text = "预算金额（元）",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
-                    label = { Text("预算金额 (¥)") },
-                    singleLine = true
+                    placeholder = { Text("例如：1000") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "周期",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    BudgetPeriod.values().forEach { period ->
-                        FilterChip(
-                            selected = selectedPeriod == period,
-                            onClick = { selectedPeriod = period },
-                            label = {
-                                Text(
-                                    when (period) {
-                                        BudgetPeriod.WEEKLY -> "周"
-                                        BudgetPeriod.MONTHLY -> "月"
-                                        BudgetPeriod.YEARLY -> "年"
-                                        else -> "自定义"
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
             }
         },
         confirmButton = {
@@ -234,18 +372,42 @@ fun AddBudgetDialog(
                 onClick = {
                     val amountInCents = (amount.toDoubleOrNull() ?: 0.0) * 100
                     if (amountInCents > 0) {
-                        onConfirm(amountInCents.toLong(), selectedPeriod)
-                        onDismiss()
+                        onSave(budget?.categoryId ?: "", amountInCents.toLong())
                     }
                 }
             ) {
-                Text("确定")
+                Text("保存")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
+            Row {
+                if (budget != null) {
+                    TextButton(
+                        onClick = { onDelete(budget.id) },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("删除")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
             }
         }
     )
 }
+
+private fun formatMoney(cents: Long): String {
+    val yuan = cents / 100.0
+    return NumberFormat.getCurrencyInstance(java.util.Locale.CHINA).format(yuan)
+}
+
+// Data class for category budget display
+data class CategoryBudgetDisplay(
+    val categoryName: String,
+    val emoji: String,
+    val budgetAmount: Long,
+    val usedAmount: Long,
+    val percent: Float,
+    val rawBudget: com.pocketbook.data.entity.Budget
+)

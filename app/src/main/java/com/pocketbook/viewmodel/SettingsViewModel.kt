@@ -68,4 +68,12 @@ class SettingsViewModel @Inject constructor(
     fun clearExportResult() {
         _exportResult.value = null
     }
+
+    fun clearAllData() {
+        viewModelScope.launch {
+            // This would clear all data - implementation depends on repositories
+            // For now just show that it's a planned feature
+            _exportResult.value = Result.failure(Exception("数据清除功能将在后续版本实现"))
+        }
+    }
 }

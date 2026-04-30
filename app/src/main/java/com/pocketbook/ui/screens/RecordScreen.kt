@@ -27,8 +27,6 @@ import com.pocketbook.data.entity.Account
 import com.pocketbook.data.entity.Category
 import com.pocketbook.data.entity.Insight
 import com.pocketbook.data.entity.TransactionType
-import com.pocketbook.ui.theme.ExpenseRed
-import com.pocketbook.ui.theme.IncomeGreen
 import com.pocketbook.viewmodel.CategoryViewModel
 import com.pocketbook.viewmodel.RecordViewModel
 import java.text.SimpleDateFormat
@@ -278,7 +276,7 @@ fun RecordScreen(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = when (insight.severity) {
-                                    com.pocketbook.data.entity.InsightSeverity.HIGH -> ExpenseRed.copy(alpha = 0.1f)
+                                    com.pocketbook.data.entity.InsightSeverity.HIGH -> Color(0xFFC62828).copy(alpha = 0.1f)
                                     com.pocketbook.data.entity.InsightSeverity.MEDIUM -> MaterialTheme.colorScheme.tertiaryContainer
                                     else -> MaterialTheme.colorScheme.primaryContainer
                                 }
@@ -375,8 +373,8 @@ fun TypeSelector(
         types.forEach { type ->
             val isSelected = type == selectedType
             val bgColor = when {
-                isSelected && type == TransactionType.EXPENSE -> ExpenseRed
-                isSelected && type == TransactionType.INCOME -> IncomeGreen
+                isSelected && type == TransactionType.EXPENSE -> Color(0xFFC62828)
+                isSelected && type == TransactionType.INCOME -> Color(0xFF2E7D32)
                 else -> Color.Transparent
             }
             val textColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
@@ -405,8 +403,8 @@ fun TypeSelector(
 @Composable
 fun AmountDisplay(amount: String, type: TransactionType) {
     val color = when (type) {
-        TransactionType.EXPENSE -> ExpenseRed
-        TransactionType.INCOME -> IncomeGreen
+        TransactionType.EXPENSE -> Color(0xFFC62828)
+        TransactionType.INCOME -> Color(0xFF2E7D32)
         else -> MaterialTheme.colorScheme.onSurface
     }
     Box(

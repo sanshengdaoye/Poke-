@@ -1,5 +1,7 @@
 package com.pocketbook.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,7 +14,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pocketbook.data.entity.Budget
 import com.pocketbook.viewmodel.BudgetViewModel
 import java.text.NumberFormat
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,41 +185,20 @@ private fun TotalBudgetCard(totalBudget: Long, totalUsed: Long) {
 @Composable
 private fun CanvasRing(percent: Float, isOver: Boolean) {
     val color = if (isOver) Color(0xFFC62828) else MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    val density = androidx.compose.ui.platform.LocalDensity.current
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawBehind {
-                val strokeWidth = with(density) { 12.dp.toPx() }
-                val radius = (this.size.minDimension - strokeWidth) / 2
-                val centerX = this.size.width / 2
-                val centerY = this.size.height / 2
-
-                // 背景环
-                drawArc(
-                    color = trackColor,
-                    startAngle = -90f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    topLeft = Offset(centerX - radius, centerY - radius),
-                    size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                )
-
-                // 进度环
-                drawArc(
-                    color = color,
-                    startAngle = -90f,
-                    sweepAngle = 360f * percent,
-                    useCenter = false,
-                    topLeft = Offset(centerX - radius, centerY - radius),
-                    size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                )
-            }
-    )
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            progress = { percent.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxSize(),
+            color = color,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            strokeWidth = 10.dp,
+            strokeCap = StrokeCap.Round
+        )
+    }
 }
 
 @Composable
